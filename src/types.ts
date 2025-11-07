@@ -44,6 +44,7 @@ export type Fighter = {
   fullName?: string;
   callsign?: string;
   rank?: string;
+  position?: string;
   unit?: string;
   notes?: string;
 };

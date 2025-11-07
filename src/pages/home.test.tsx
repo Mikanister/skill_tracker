@@ -21,9 +21,11 @@ describe('Home', () => {
       tasks={[] as any}
       createTask={() => {}}
       updateStatus={() => {}}
+      updateDetails={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
+      addComment={() => {}}
     />);
 
     expect(screen.getByText('Поки що немає задач')).toBeTruthy();
@@ -44,9 +46,11 @@ describe('Home', () => {
       tasks={tasks as any}
       createTask={() => {}}
       updateStatus={() => {}}
+      updateDetails={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
+      addComment={() => {}}
     />);
 
     expect(screen.queryByText('Поки що немає задач')).toBeNull();
@@ -77,14 +81,141 @@ describe('Home', () => {
       tasks={tasks as any}
       createTask={() => {}}
       updateStatus={() => {}}
+      updateDetails={() => {}}
       approveTask={() => {}}
       deleteTask={deleteTask}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
+      addComment={() => {}}
     />);
 
-    const deleteButtons = screen.getAllByRole('button', { name: 'Видалити задачу «Task todo»' });
+    await user.click(screen.getByText('Task todo'));
+    const deleteButtons = await screen.findAllByRole('button', { name: 'Видалити задачу «Task todo»' });
     await user.click(deleteButtons[0]);
     expect(confirmSpy).toHaveBeenCalledWith('Видалити задачу «Task todo»?');
     expect(deleteTask).toHaveBeenCalledWith('t1');
+  });
+
+  it('allows editing title and description in modal and saves changes', async () => {
+    const updateDetails = vi.fn();
+    const task = {
+      id: 't1',
+      title: 'Initial title',
+      difficulty: 3,
+      status: 'todo',
+      description: 'Initial description',
+      assignees: [],
+      comments: [],
+      history: [],
+      createdAt: Date.now()
+    };
+    const user = userEvent.setup();
+
+    render(<Home
+      fighters={fighters as any}
+      categories={categories as any}
+      tasks={[task] as any}
+      createTask={() => {}}
+      updateStatus={() => {}}
+      updateDetails={updateDetails}
+      approveTask={() => {}}
+      deleteTask={() => {}}
+      fighterSkillLevels={{ f1: { s1: 0 } } as any}
+      addComment={() => {}}
+    />);
+
+    await user.click(screen.getByText('Initial title'));
+
+    const titleInput = await screen.findByPlaceholderText('Назва задачі');
+    const descriptionArea = screen.getByPlaceholderText('Додайте опис задачі');
+    const saveButton = screen.getByRole('button', { name: 'Зберегти' });
+
+    await user.clear(titleInput);
+    await user.type(titleInput, 'Updated title');
+    await user.clear(descriptionArea);
+    await user.type(descriptionArea, 'Updated description');
+    await user.click(saveButton);
+
+    expect(updateDetails).toHaveBeenCalledWith('t1', {
+      title: 'Updated title',
+      description: 'Updated description'
+    });
+  });
+
+  it('disables saving when title is empty', async () => {
+    const updateDetails = vi.fn();
+    const task = {
+      id: 't1',
+      title: 'Keep title',
+      difficulty: 2,
+      status: 'todo',
+      description: '',
+      assignees: [],
+      comments: [],
+      history: [],
+      createdAt: Date.now()
+    };
+    const user = userEvent.setup();
+
+    render(<Home
+      fighters={fighters as any}
+      categories={categories as any}
+      tasks={[task] as any}
+      createTask={() => {}}
+      updateStatus={() => {}}
+      updateDetails={updateDetails}
+      approveTask={() => {}}
+      deleteTask={() => {}}
+      fighterSkillLevels={{ f1: { s1: 0 } } as any}
+      addComment={() => {}}
+    />);
+
+    await user.click(screen.getByText('Keep title'));
+
+    const titleInput = await screen.findByPlaceholderText('Назва задачі');
+    const saveButton = screen.getByRole('button', { name: 'Зберегти' });
+
+    await user.clear(titleInput);
+
+    expect(saveButton).to.have.property('disabled', true);
+    expect(updateDetails).not.toHaveBeenCalled();
+  });
+
+  it('allows adding comments from modal', async () => {
+    const addComment = vi.fn();
+    const task = {
+      id: 't1',
+      title: 'Comment task',
+      difficulty: 2,
+      status: 'todo',
+      description: '',
+      assignees: [],
+      comments: [],
+      history: [],
+      createdAt: Date.now()
+    };
+    const user = userEvent.setup();
+
+    render(<Home
+      fighters={fighters as any}
+      categories={categories as any}
+      tasks={[task] as any}
+      createTask={() => {}}
+      updateStatus={() => {}}
+      updateDetails={() => {}}
+      approveTask={() => {}}
+      deleteTask={() => {}}
+      fighterSkillLevels={{ f1: { s1: 0 } } as any}
+      addComment={addComment}
+    />);
+
+    await user.click(screen.getByText('Comment task'));
+
+    const commentArea = await screen.findByPlaceholderText('Поділитися оновленням або рішенням по задачі');
+    const commentButton = screen.getByRole('button', { name: 'Залишити коментар' });
+
+    await user.type(commentArea, 'Great job');
+    await user.click(commentButton);
+
+    expect(addComment).toHaveBeenCalledWith('t1', 'Great job');
   });
 });

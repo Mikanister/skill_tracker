@@ -381,6 +381,20 @@ export function useSkillRpgState() {
     }));
   }
 
+  function updateTaskV2Details(taskId: string, updates: { title?: string; description?: string }) {
+    setTasksV2(prev => prev.map(t => {
+      if (t.id !== taskId) return t;
+      const next = { ...t } as TaskV2;
+      if (typeof updates.title === 'string') {
+        next.title = updates.title;
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, 'description')) {
+        next.description = updates.description;
+      }
+      return next;
+    }));
+  }
+
   function approveTaskV2(taskId: string, approved: Record<string, Record<string, number>>) {
     // approved[fighterId][skillId] = xpApproved
     const task = tasksV2.find(t => t.id === taskId);
@@ -529,6 +543,7 @@ export function useSkillRpgState() {
     deleteFighter,
     createTaskV2,
     updateTaskV2Status,
+    updateTaskV2Details,
     approveTaskV2,
     deleteTaskV2,
     addTaskComment,

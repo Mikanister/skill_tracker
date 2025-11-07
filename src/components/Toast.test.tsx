@@ -5,10 +5,10 @@ import { ToastContainer, useToast } from './Toast';
 
 describe('ToastContainer', () => {
   const baseToast = { id: '1', message: 'Hello', type: 'info' as const };
-  let dismiss: ReturnType<typeof vi.fn>;
+  let dismiss: ReturnType<typeof vi.fn<(id: string) => void>>;
 
   beforeEach(() => {
-    dismiss = vi.fn();
+    dismiss = vi.fn<(id: string) => void>();
   });
 
   afterEach(() => {

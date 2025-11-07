@@ -80,9 +80,11 @@ export default function AppShell() {
             tasks={state.tasksV2}
             createTask={state.createTaskV2}
             updateStatus={state.updateTaskV2Status}
+            updateDetails={state.updateTaskV2Details}
             approveTask={state.approveTaskV2}
             deleteTask={state.deleteTaskV2}
             fighterSkillLevels={state.fighterSkillLevels}
+            addComment={state.addTaskComment}
           />} />
           <Route path="/fighters" element={<Fighters
             fighters={state.fighters}

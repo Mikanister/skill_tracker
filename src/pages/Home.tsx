@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Category, Fighter, FighterSkillLevels, TaskV2, TaskV2Assignee, TaskV2Status, TaskComment } from '@/types';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Category, Fighter, FighterSkillLevels, TaskV2, TaskV2Assignee, TaskV2Status, TaskComment, TaskStatusHistoryEntry } from '@/types';
 import MultiAssignTaskModal from '@/components/MultiAssignTaskModal';
 import { Modal } from '@/components/Modal';
 import { repetitionFactorFromTasks } from '@/utils';
@@ -11,13 +11,14 @@ type Props = {
   tasks: TaskV2[];
   createTask: (payload: { title: string; description?: string; difficulty: 1|2|3|4|5; assignees: TaskV2Assignee[] }) => void;
   updateStatus: (taskId: string, status: TaskV2Status) => void;
+  updateDetails: (taskId: string, updates: { title?: string; description?: string }) => void;
   approveTask: (taskId: string, approved: Record<string, Record<string, number>>) => void;
   deleteTask: (taskId: string) => void;
   fighterSkillLevels: Record<string, FighterSkillLevels>;
   addComment: (taskId: string, message: string, author?: string) => void;
 };
 
-export default function Home({ fighters, categories, tasks, createTask, updateStatus, approveTask, deleteTask, fighterSkillLevels, addComment }: Props) {
+export default function Home({ fighters, categories, tasks, createTask, updateStatus, updateDetails, approveTask, deleteTask, fighterSkillLevels, addComment }: Props) {
   const [open, setOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskV2 | null>(null);
   const [approved, setApproved] = useState<Record<string, Record<string, number>>>({});
@@ -26,6 +27,8 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
   const [viewTaskId, setViewTaskId] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
   const [commentDraft, setCommentDraft] = useState('');
+  const [titleDraft, setTitleDraft] = useState('');
+  const [descriptionDraft, setDescriptionDraft] = useState('');
 
   const skillIndex = useMemo(() => {
     const map = new Map<string, { name: string; categoryId: string }>();
@@ -35,12 +38,13 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
 
   const viewedTask = useMemo(() => viewTaskId ? tasks.find(t => t.id === viewTaskId) ?? null : null, [tasks, viewTaskId]);
 
-  const statusLabels: Record<TaskV2Status, string> = {
+  const statusLabels = useMemo<Record<TaskV2Status, string>>(() => ({
     todo: 'To Do',
     in_progress: 'In Progress',
     validation: 'Validation',
-    done: 'Done'
-  };
+    done: 'Done',
+    archived: 'Archived'
+  }), []);
 
   const formatDateTime = (value?: number) => value ? new Date(value).toLocaleString() : '—';
 
@@ -63,18 +67,7 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
 
     const palette = statusBadge(task.status);
 
-    const activityEntries = useMemo(() => {
-    if (!viewedTask) return [] as ({ type: 'status'; entry: TaskStatusHistoryEntry } | { type: 'comment'; entry: TaskComment })[];
-    const statusEntries = (viewedTask.history ?? []).map(entry => ({ type: 'status' as const, entry }));
-    const commentEntries = (viewedTask.comments ?? []).map(entry => ({ type: 'comment' as const, entry }));
-    return [...statusEntries, ...commentEntries].sort((a, b) => {
-      const timeA = a.type === 'status' ? a.entry.changedAt : a.entry.createdAt;
-      const timeB = b.type === 'status' ? b.entry.changedAt : b.entry.createdAt;
-      return timeB - timeA;
-    });
-  }, [viewedTask]);
-
-  return (
+    return (
       <div ref={menuRef} style={{ position: 'relative' }}>
         <button
           onClick={e => { e.stopPropagation(); setOpen(prev => !prev); }}
@@ -186,7 +179,7 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
     in_progress: tasks.filter(t => t.status === 'in_progress'),
     validation: tasks.filter(t => t.status === 'validation'),
     done: tasks.filter(t => t.status === 'done'),
-    archived: tasks.filter(t => t.status === 'archived').sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    archived: tasks.filter(t => t.status === 'archived').sort((a, b) => (b.approvedAt || b.createdAt || 0) - (a.approvedAt || a.createdAt || 0))
   }), [tasks]);
 
   const activeCount = byStatus.in_progress.length + byStatus.validation.length;
@@ -205,6 +198,44 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
   useEffect(() => {
     setCommentDraft('');
   }, [viewTaskId]);
+
+  useEffect(() => {
+    if (viewedTask) {
+      setTitleDraft(viewedTask.title);
+      setDescriptionDraft(viewedTask.description ?? '');
+    } else {
+      setTitleDraft('');
+      setDescriptionDraft('');
+    }
+  }, [viewedTask]);
+
+  const trimmedTitle = titleDraft.trim();
+  const trimmedDescription = descriptionDraft.trim();
+  const titleError = trimmedTitle.length === 0;
+  const detailsDirty = viewedTask ? (
+    trimmedTitle !== viewedTask.title.trim() ||
+    trimmedDescription !== (viewedTask.description ?? '').trim()
+  ) : false;
+
+  const handleSaveDetails = () => {
+    if (!viewedTask) return;
+    if (!trimmedTitle) return;
+    updateDetails(viewedTask.id, {
+      title: trimmedTitle,
+      description: trimmedDescription === '' ? undefined : descriptionDraft
+    });
+  };
+
+  const activityEntries = useMemo(() => {
+    if (!viewedTask) return [] as ({ type: 'status'; entry: TaskStatusHistoryEntry } | { type: 'comment'; entry: TaskComment })[];
+    const statusEntries = (viewedTask.history ?? []).map(entry => ({ type: 'status' as const, entry }));
+    const commentEntries = (viewedTask.comments ?? []).map(entry => ({ type: 'comment' as const, entry }));
+    return [...statusEntries, ...commentEntries].sort((a, b) => {
+      const timeA = a.type === 'status' ? a.entry.changedAt : a.entry.createdAt;
+      const timeB = b.type === 'status' ? b.entry.changedAt : b.entry.createdAt;
+      return timeB - timeA;
+    });
+  }, [viewedTask]);
 
   return (
     <div style={{ padding: 24, height: '100%', display: 'flex', flexDirection: 'column', gap: 18, background: 'var(--surface-panel-alt)' }}>
@@ -396,14 +427,37 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
         open={!!viewedTask}
         onClose={() => setViewTaskId(null)}
         title={viewedTask ? (
-          <>
-            <span style={{ flex: 1 }}>Задача: {viewedTask.title}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%' }}>
+            <div style={{ flex: 1, display: 'grid', gap: 4 }}>
+              <label style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Назва</label>
+              <input
+                value={titleDraft}
+                onChange={e => setTitleDraft(e.target.value)}
+                placeholder="Назва задачі"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: 10,
+                  border: titleError ? '1px solid var(--danger-soft-border)' : '1px solid var(--border-subtle)',
+                  background: 'var(--surface-panel)',
+                  color: 'var(--fg)',
+                  fontSize: 16,
+                  fontWeight: 600
+                }}
+              />
+              {titleError && <span style={{ fontSize: 11, color: 'var(--danger-soft-border)' }}>Назва не може бути порожньою</span>}
+            </div>
             <StatusDropdown task={viewedTask} />
-          </>
+          </div>
         ) : 'Задача'}
         width={820}
         footer={viewedTask ? (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, alignItems: 'center' }}>
+            <button
+              onClick={handleSaveDetails}
+              disabled={!detailsDirty || titleError}
+              style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid var(--success-soft-border)', background: detailsDirty && !titleError ? 'var(--success-soft-bg)' : 'var(--surface-panel)', color: 'var(--fg)', fontWeight: 600, opacity: (!detailsDirty || titleError) ? 0.5 : 1 }}
+            >Зберегти</button>
             <button onClick={() => setViewTaskId(null)} style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)' }}>Закрити</button>
             <button
               onClick={() => {
@@ -413,6 +467,7 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
                 }
               }}
               style={{ padding: '8px 14px', borderRadius: 10, background: 'var(--danger-soft-bg)', border: '1px solid var(--danger-soft-border)', color: 'var(--fg)', fontWeight: 600 }}
+              aria-label={`Видалити задачу «${viewedTask?.title ?? ''}»`}
             >Видалити</button>
           </div>
         ) : undefined}
@@ -424,9 +479,13 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
                 <strong style={{ fontSize: 16 }}>Опис</strong>
                 <span style={{ fontSize: 12, color: 'var(--muted)' }}>Деталі задачі</span>
               </div>
-              <div style={{ fontSize: 13, color: viewedTask.description ? 'var(--fg)' : 'var(--muted)', lineHeight: 1.6 }}>
-                {viewedTask.description?.trim() || 'Опис відсутній.'}
-              </div>
+              <textarea
+                value={descriptionDraft}
+                onChange={e => setDescriptionDraft(e.target.value)}
+                rows={5}
+                placeholder="Додайте опис задачі"
+                style={{ padding: 12, borderRadius: 12, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)', resize: 'vertical', minHeight: 120 }}
+              />
             </section>
 
             <section style={{ display: 'grid', gap: 16 }}>
@@ -486,10 +545,12 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
                 {activityEntries.map((item, idx) => {
                   if (item.type === 'status') {
                     const { fromStatus, toStatus, changedAt } = item.entry;
+                    const fromLabel = fromStatus ? statusLabels[fromStatus as TaskV2Status] : 'Створено';
+                    const toLabel = statusLabels[toStatus];
                     return (
                       <li key={`status-${toStatus}-${changedAt}-${idx}`} style={{ border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '8px 12px', background: 'var(--surface-panel-alt)', display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>{fromStatus ? `${statusLabels[fromStatus]} →` : 'Створено →'}</span>
-                        <span style={{ fontWeight: 600 }}>{statusLabels[toStatus]}</span>
+                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>{fromLabel} →</span>
+                        <span style={{ fontWeight: 600 }}>{toLabel}</span>
                         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted)' }}>{formatDateTime(changedAt)}</span>
                       </li>
                     );
@@ -528,7 +589,7 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
                     setCommentDraft('');
                   }}
                   disabled={!commentDraft.trim()}
-                  style={{ padding: '8px 14px', borderRadius: 10, border: '1px солid var(--border-subtle)', background: 'var(--surface-panel-alt)', color: 'var(--fg)', fontWeight: 600 }}
+                  style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel-alt)', color: 'var(--fg)', fontWeight: 600 }}
                 >Залишити коментар</button>
               </div>
             </section>
