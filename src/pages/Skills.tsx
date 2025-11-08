@@ -19,10 +19,12 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(categories[0]?.id ?? null);
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [editOpen, setEditOpen] = useState(false);
-  const [statsOpen, setStatsOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [viewName, setViewName] = useState('');
+  const [viewDescription, setViewDescription] = useState('');
   const [catEditOpen, setCatEditOpen] = useState(false);
   const [catEditName, setCatEditName] = useState('');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -68,6 +70,13 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
     setEditOpen(true);
   }
 
+  function openView(skill: Skill) {
+    setSelectedSkill(skill);
+    setViewName(skill.name);
+    setViewDescription(skill.description || '');
+    setViewOpen(true);
+  }
+
   function saveSkill() {
     const name = editName.trim();
     if (!name) return;
@@ -79,21 +88,28 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
     setEditOpen(false);
   }
 
-  function openStats(skill: Skill) {
-    setSelectedSkill(skill);
-    setStatsOpen(true);
-  }
-
-  const skillStats = useMemo(() => {
+  const selectedSkillStats = useMemo(() => {
     if (!selectedSkill) return null;
-    const fightersWithSkill = fighters.filter(f => (fighterSkillLevels[f.id]?.[selectedSkill.id] ?? 0) > 0);
-    const levels = fightersWithSkill.map(f => Number(fighterSkillLevels[f.id]?.[selectedSkill.id] ?? 0));
-    const avgLevel = levels.length ? (levels.reduce((sum, lvl) => sum + lvl, 0) / levels.length).toFixed(1) : '0.0';
-    const topFighters = fightersWithSkill
-      .map(f => ({ fighter: f, level: fighterSkillLevels[f.id]?.[selectedSkill.id] ?? 0 }))
-      .sort((a, b) => b.level - a.level)
-      .slice(0, 3);
-    return { count: fightersWithSkill.length, avgLevel, topFighters };
+    const fighterEntries = fighters
+      .map(f => ({
+        fighter: f,
+        level: Number(fighterSkillLevels[f.id]?.[selectedSkill.id] ?? 0)
+      }))
+      .filter(entry => entry.level > 0)
+      .sort((a, b) => b.level - a.level);
+    const total = fighterEntries.reduce((sum, entry) => sum + entry.level, 0);
+    const average = fighterEntries.length ? (total / fighterEntries.length).toFixed(1) : '0.0';
+    const byUnit = fighterEntries.reduce<Record<string, number>>((acc, entry) => {
+      const unit = (entry.fighter.unit || 'Без підрозділу').trim();
+      acc[unit] = (acc[unit] ?? 0) + 1;
+      return acc;
+    }, {});
+    return {
+      fighters: fighterEntries,
+      average,
+      count: fighterEntries.length,
+      byUnit
+    };
   }, [selectedSkill, fighters, fighterSkillLevels]);
 
   return (
@@ -142,25 +158,33 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: 24,
+                  minWidth: 24,
                   height: 24,
+                  padding: '0 8px',
                   borderRadius: 8,
-                  background: 'rgba(59,130,246,0.25)',
+                  background: 'rgba(59,130,246,0.18)',
                   fontSize: 12,
-                  color: 'rgba(191,219,254,0.85)'
+                  color: 'rgba(191,219,254,0.85)',
+                  fontWeight: 600
                 }}>{(cat.skills?.length ?? 0)}</span>
                 <span style={{ flex: 1 }}>{cat.name}</span>
               </button>
               <button
                 onClick={() => { setEditingCategory(cat); setCatEditName(cat.name); setCatEditOpen(true); }}
                 style={{
-                  padding: '6px 8px',
-                  borderRadius: 10,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
                   border: '1px solid var(--border-subtle)',
                   background: 'var(--surface-panel-alt)',
-                  color: 'var(--fg)'
+                  color: 'var(--fg)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 13
                 }}
-              >✏️</button>
+                aria-label={`Редагувати категорію «${cat.name}»`}
+              >✎</button>
             </div>
           ))}
         </div>
@@ -204,8 +228,14 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
           paddingBottom: 24
         }}>
           {filteredSkills.length === 0 && (
-            <div style={{ gridColumn: '1 / -1', padding: '24px 28px', borderRadius: 18, border: '1px dashed var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--muted)', fontSize: 14 }}>
-              Навичок не знайдено. Спробуйте інший запит або додайте нову.
+            <div style={{ gridColumn: '1 / -1', padding: '36px 32px', borderRadius: 20, border: '1px dashed var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--muted)', fontSize: 15, display: 'grid', gap: 12, justifyItems: 'center' }}>
+              <strong style={{ fontSize: 18, color: 'var(--fg)' }}>У цій категорії поки немає навичок</strong>
+              <span>Додайте першу навичку або скористайтесь пошуком.</span>
+              <button
+                onClick={() => openEdit()}
+                data-testid="empty-add-skill"
+                style={{ padding: '10px 16px', borderRadius: 12, border: '1px solid var(--accent-soft-border)', background: 'var(--accent-soft-bg)', color: 'var(--fg)', fontWeight: 600 }}
+              >+ Додати навичку</button>
             </div>
           )}
           {filteredSkills.map(skill => {
@@ -230,26 +260,27 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
                   opacity: draggedSkillId === skill.id ? 0.55 : 1,
                   transition: 'opacity 0.15s ease, transform 0.15s ease'
                 }}
+                onClick={() => openView(skill)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openView(skill);
+                  }
+                }}
               >
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                  <strong style={{ flex: 1, fontSize: 17 }}>{skill.name}</strong>
-                  {usage.maxLevel > 0 && (
-                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: 'var(--surface-accent-pill)', border: '1px solid var(--surface-accent-pill-border)', color: 'var(--fg)' }}>max lvl {usage.maxLevel}</span>
-                  )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <strong style={{ flex: '1 1 160px', fontSize: 17 }}>{skill.name}</strong>
                 </div>
                 {skill.description && (
                   <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.45 }}>{skill.description}</div>
                 )}
-                <div style={{ display: 'flex', gap: 8, fontSize: 12, color: 'var(--muted)' }}>
-                  <span>⚔️ Бійців: {usage.count}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                  <button onClick={() => openStats(skill)} style={{ padding: '8px 12px', flex: 1, borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel-alt)', color: 'var(--fg)', fontWeight: 600 }}>Статистика</button>
-                  <button onClick={() => openEdit(skill)} style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--accent-soft-border)', background: 'var(--accent-soft-pill)', color: 'var(--fg)', fontWeight: 600 }}>Редагувати</button>
-                  <button
-                    onClick={() => { if (confirm(`Видалити навичку «${skill.name}»?`)) deleteSkill(skill.id); }}
-                    style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--danger-soft-border)', background: 'var(--danger-soft-bg)', color: 'var(--fg)', fontWeight: 600 }}
-                  >Видалити</button>
+                <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--muted)' }}>
+                  <span style={{ padding: '2px 8px', borderRadius: 999, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel-alt)' }}>Бійців: {usage.count}</span>
+                  {usage.maxLevel > 0 && (
+                    <span style={{ padding: '2px 8px', borderRadius: 999, border: '1px solid var(--surface-accent-pill-border)', background: 'var(--surface-accent-pill)', color: 'var(--fg)' }}>Макс. рівень {usage.maxLevel}</span>
+                  )}
                 </div>
               </article>
             );
@@ -274,29 +305,89 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
         </div>
       </Modal>
 
-      <Modal open={statsOpen} onClose={() => setStatsOpen(false)} title={`Статистика: ${selectedSkill?.name || ''}`} width={700}>
-        {skillStats && (
+      <Modal open={viewOpen && !!selectedSkill} onClose={() => setViewOpen(false)} title={`Навичка: ${selectedSkill?.name || ''}`} width={720}
+        footer={selectedSkill ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+            <button
+              onClick={() => {
+                if (selectedSkill && confirm(`Видалити навичку «${selectedSkill.name}»?`)) {
+                  deleteSkill(selectedSkill.id);
+                  setViewOpen(false);
+                }
+              }}
+              style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--danger-soft-border)', background: 'var(--danger-soft-bg)', color: 'var(--fg)', fontWeight: 600 }}
+            >Видалити</button>
+            <button
+              onClick={() => {
+                if (!selectedSkill) return;
+                const name = viewName.trim();
+                if (!name) return;
+                updateSkill({ ...selectedSkill, name, description: viewDescription.trim() });
+                setViewOpen(false);
+              }}
+              style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid var(--accent-soft-border)', background: 'var(--accent-soft-bg)', color: 'var(--fg)', fontWeight: 600 }}
+            >Зберегти</button>
+          </div>
+        ) : undefined}
+      >
+        {selectedSkill && (
           <div style={{ display: 'grid', gap: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: '10px 12px', border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--surface-panel)' }}>
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--muted)' }}>Бійців володіє</div>
-                <div style={{ fontSize: 20, fontWeight: 700 }}>{skillStats.count}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--muted)' }}>Середній рівень</div>
-                <div style={{ fontSize: 20, fontWeight: 700 }}>{skillStats.avgLevel}</div>
-              </div>
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>Топ-3 бійці</div>
-              {skillStats.topFighters.length === 0 && <div style={{ color: 'var(--muted)' }}>Ніхто не володіє</div>}
-              {skillStats.topFighters.map(({ fighter, level }) => (
-                <div key={fighter.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', marginBottom: 6, border: '1px solid var(--border-subtle)', borderRadius: 6, background: 'var(--surface-card)' }}>
-                  <span style={{ flex: 1 }}>{fighter.callsign || fighter.name}</span>
-                  <span style={{ fontSize: 12, padding: '2px 8px', border: '1px solid var(--border-subtle)', borderRadius: 999, background: 'var(--surface-panel)' }}>lvl {level}</span>
+            <label style={{ display: 'grid', gap: 6 }}>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>Назва</span>
+              <input value={viewName} onChange={e => setViewName(e.target.value)} style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)' }} />
+            </label>
+            <label style={{ display: 'grid', gap: 6 }}>
+              <span style={{ fontSize: 12, color: 'var(--muted)' }}>Опис</span>
+              <textarea value={viewDescription} onChange={e => setViewDescription(e.target.value)} rows={4} style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)', resize: 'vertical' }} />
+            </label>
+            {selectedSkillStats && (
+              <div style={{ display: 'grid', gap: 14 }}>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 200px', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)' }}>
+                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>Бійців володіє</div>
+                    <div style={{ fontSize: 20, fontWeight: 700 }}>{selectedSkillStats.count}</div>
+                  </div>
+                  <div style={{ flex: '1 1 200px', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)' }}>
+                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>Середній рівень</div>
+                    <div style={{ fontSize: 20, fontWeight: 700 }}>{selectedSkillStats.average}</div>
+                  </div>
                 </div>
-              ))}
-            </div>
+                <div>
+                  <strong style={{ fontSize: 14 }}>Розподіл за підрозділами</strong>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+                    {Object.entries(selectedSkillStats.byUnit).map(([unit, count]) => (
+                      <span key={unit} style={{ padding: '4px 10px', borderRadius: 999, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel-alt)', fontSize: 12 }}>{unit}: {count}</span>
+                    ))}
+                    {Object.keys(selectedSkillStats.byUnit).length === 0 && <span style={{ fontSize: 12, color: 'var(--muted)' }}>Поки що немає даних</span>}
+                  </div>
+                </div>
+                <div>
+                  <strong style={{ fontSize: 14 }}>Бійці</strong>
+                  {selectedSkillStats.fighters.length === 0 ? (
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>Ніхто не володіє цією навичкою.</div>
+                  ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 6, fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
+                          <th style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-subtle)' }}>Боєць</th>
+                          <th style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-subtle)' }}>Підрозділ</th>
+                          <th style={{ padding: '6px 8px', borderBottom: '1px солід var(--border-subtle)' }}>Рівень</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedSkillStats.fighters.map(({ fighter, level }) => (
+                          <tr key={fighter.id}>
+                            <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-subtle)' }}>{fighter.callsign || fighter.name}</td>
+                            <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-subtle)' }}>{fighter.unit || '—'}</td>
+                            <td style={{ padding: '6px 8px', borderBottom: '1px солід var(--border-subtle)' }}>lvl {level}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Modal>

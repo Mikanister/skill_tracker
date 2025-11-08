@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { SkillTree, Fighter, FighterSkillLevels, FighterXpLedger, TaskV2 } from '@/types';
 import { downloadJSON, downloadCSV, importFromJSON } from '../lib/export';
 
@@ -36,6 +36,7 @@ export default function Settings({
   toast
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [confirmValue, setConfirmValue] = useState('');
 
   const handleExportJSON = () => {
     downloadJSON(
@@ -140,19 +141,41 @@ export default function Settings({
         </div>
       </section>
 
-      <section style={{ borderRadius: 18, border: '1px solid var(--danger-soft-border)', padding: 24, background: 'var(--surface-danger-soft)', boxShadow: 'var(--shadow-md)', display: 'grid', gap: 12 }}>
+      <section style={{ borderRadius: 18, border: '1px solid var(--danger-soft-border)', padding: 24, background: 'var(--surface-danger-soft)', boxShadow: 'var(--shadow-md)', display: 'grid', gap: 16 }}>
         <div>
           <h3 style={{ margin: 0, fontSize: 18 }}>Небезпечна зона</h3>
           <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--muted)' }}>Скидання видалить всі дані без можливості відновлення.</p>
         </div>
+        <div style={{ borderRadius: 14, border: '1px solid var(--danger-soft-border)', padding: 16, background: 'rgba(239,68,68,0.08)', display: 'grid', gap: 10 }}>
+          <strong style={{ fontSize: 14 }}>Що буде видалено:</strong>
+          <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: 'var(--muted)' }}>
+            <li>Усі профілі бійців та їхній прогрес</li>
+            <li>Каталог навичок і категорії</li>
+            <li>Журнал задач і коментарі</li>
+            <li>Налаштування та історія імпортів</li>
+          </ul>
+          <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span>Бажано зберегти резервну копію перед очисткою.</span>
+            <button onClick={handleExportJSON} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--accent-soft-border)', background: 'var(--surface-panel)', color: 'var(--fg)', fontSize: 12 }}>Експортувати зараз</button>
+          </div>
+        </div>
+        <label style={{ display: 'grid', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
+          <span>Для підтвердження введіть <strong>DELETE</strong>:</span>
+          <input value={confirmValue} onChange={e => setConfirmValue(e.target.value)} placeholder="Введіть DELETE" style={{ padding: 10, borderRadius: 10, border: '1px solid var(--danger-soft-border)', background: 'var(--surface-panel)', color: 'var(--fg)' }} />
+        </label>
         <button
           onClick={() => {
+            if (confirmValue !== 'DELETE') {
+              toast.error('Для підтвердження введіть DELETE');
+              return;
+            }
             if (confirm('Видалити ВСІ дані? Це неможливо відмінити!')) {
               onReset();
               toast.info('Дані скинуті');
             }
           }}
-          style={{ padding: '12px 18px', borderRadius: 14, background: 'var(--danger-soft-bg)', border: '1px solid var(--danger-soft-border)', color: 'var(--fg)', fontWeight: 600, boxShadow: 'var(--shadow-sm)' }}
+          style={{ padding: '12px 18px', borderRadius: 14, background: confirmValue === 'DELETE' ? 'var(--danger-soft-bg)' : 'rgba(239,68,68,0.2)', border: '1px solid var(--danger-soft-border)', color: 'var(--fg)', fontWeight: 600, boxShadow: 'var(--shadow-sm)', cursor: confirmValue === 'DELETE' ? 'pointer' : 'not-allowed', opacity: confirmValue === 'DELETE' ? 1 : 0.6 }}
+          disabled={confirmValue !== 'DELETE'}
         >
           🗑️ Скинути всі дані
         </button>
