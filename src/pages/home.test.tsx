@@ -95,8 +95,9 @@ describe('Home', () => {
     expect(deleteTask).toHaveBeenCalledWith('t1');
   });
 
-  it('allows editing title and description in modal and saves changes', async () => {
+  it('allows editing title and description in modal and logs comment', async () => {
     const updateDetails = vi.fn();
+    const addComment = vi.fn();
     const task = {
       id: 't1',
       title: 'Initial title',
@@ -120,7 +121,7 @@ describe('Home', () => {
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
-      addComment={() => {}}
+      addComment={addComment}
     />);
 
     await user.click(screen.getByText('Initial title'));
@@ -137,8 +138,10 @@ describe('Home', () => {
 
     expect(updateDetails).toHaveBeenCalledWith('t1', {
       title: 'Updated title',
-      description: 'Updated description'
+      description: 'Updated description',
+      isPriority: false
     });
+    expect(addComment).toHaveBeenCalledWith('t1', 'Оновлено назву та опис задачі');
   });
 
   it('disables saving when title is empty', async () => {
@@ -217,5 +220,43 @@ describe('Home', () => {
     await user.click(commentButton);
 
     expect(addComment).toHaveBeenCalledWith('t1', 'Great job');
+  });
+
+  it('filters tasks via search suggestions and opens modal on selection', async () => {
+    const user = userEvent.setup();
+    const task = {
+      id: 't1',
+      taskNumber: 101,
+      title: 'Searchable task',
+      difficulty: 2,
+      status: 'todo',
+      description: '',
+      assignees: [],
+      comments: [],
+      history: [],
+      createdAt: Date.now()
+    };
+
+    render(<Home
+      fighters={fighters as any}
+      categories={categories as any}
+      tasks={[task] as any}
+      createTask={() => {}}
+      updateStatus={() => {}}
+      updateDetails={() => {}}
+      approveTask={() => {}}
+      deleteTask={() => {}}
+      fighterSkillLevels={{ f1: { s1: 0 } } as any}
+      addComment={() => {}}
+    />);
+
+    const searchInput = screen.getByPlaceholderText('Пошук задачі за назвою або номером');
+    await user.click(searchInput);
+    await user.type(searchInput, 'search');
+
+    const suggestion = await screen.findByTestId('task-suggestion-t1');
+    await user.click(suggestion);
+
+    expect(await screen.findByPlaceholderText('Назва задачі')).toBeTruthy();
   });
 });

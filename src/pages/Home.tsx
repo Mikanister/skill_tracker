@@ -5,13 +5,30 @@ import { Modal } from '@/components/Modal';
 import { repetitionFactorFromTasks } from '@/utils';
 import { EmptyState } from '@/components/EmptyState';
 
+const BOARD_COLUMNS: [TaskV2Status, string][] = [
+  ['todo', 'To Do'],
+  ['in_progress', 'In Progress'],
+  ['validation', 'Validation'],
+  ['done', 'Done']
+];
+
+const COLUMN_VISIBLE_LIMIT = 25;
+
+const DEFAULT_EXPANSION: Record<TaskV2Status, boolean> = {
+  todo: false,
+  in_progress: false,
+  validation: false,
+  done: false,
+  archived: false
+};
+
 type Props = {
   fighters: Fighter[];
   categories: Category[];
   tasks: TaskV2[];
-  createTask: (payload: { title: string; description?: string; difficulty: 1|2|3|4|5; assignees: TaskV2Assignee[] }) => void;
+  createTask: (payload: { title: string; description?: string; difficulty: 1|2|3|4|5; assignees: TaskV2Assignee[]; isPriority?: boolean }) => void;
   updateStatus: (taskId: string, status: TaskV2Status) => void;
-  updateDetails: (taskId: string, updates: { title?: string; description?: string }) => void;
+  updateDetails: (taskId: string, updates: { title?: string; description?: string; isPriority?: boolean }) => void;
   approveTask: (taskId: string, approved: Record<string, Record<string, number>>) => void;
   deleteTask: (taskId: string) => void;
   fighterSkillLevels: Record<string, FighterSkillLevels>;
@@ -29,6 +46,11 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
   const [commentDraft, setCommentDraft] = useState('');
   const [titleDraft, setTitleDraft] = useState('');
   const [descriptionDraft, setDescriptionDraft] = useState('');
+  const [priorityDraft, setPriorityDraft] = useState(false);
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
+  const [expandedColumns, setExpandedColumns] = useState<Record<TaskV2Status, boolean>>({ ...DEFAULT_EXPANSION });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const skillIndex = useMemo(() => {
     const map = new Map<string, { name: string; categoryId: string }>();
@@ -36,7 +58,33 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
     return map;
   }, [categories]);
 
+  const fightersMap = useMemo(() => {
+    const map = new Map<string, Fighter>();
+    for (const fighter of fighters) map.set(fighter.id, fighter);
+    return map;
+  }, [fighters]);
+
   const viewedTask = useMemo(() => viewTaskId ? tasks.find(t => t.id === viewTaskId) ?? null : null, [tasks, viewTaskId]);
+
+  const filteredTasks = useMemo(() => {
+    if (assigneeFilter === 'all') return tasks;
+    return tasks.filter(t => t.assignees.some(a => a.fighterId === assigneeFilter));
+  }, [tasks, assigneeFilter]);
+
+  const searchSuggestions = useMemo(() => {
+    const term = searchQuery.trim().toLowerCase();
+    if (!term) return [] as TaskV2[];
+    const numeric = Number(term.replace(/^#/, ''));
+    return tasks.filter(task => {
+      const titleMatch = (task.title ?? '').toLowerCase().includes(term);
+      const numberMatch = Number.isFinite(numeric) && (task.taskNumber ?? -1) === numeric;
+      return titleMatch || numberMatch;
+    }).slice(0, 8);
+  }, [tasks, searchQuery]);
+
+  const toggleColumnExpansion = (status: TaskV2Status) => {
+    setExpandedColumns(prev => ({ ...prev, [status]: !prev[status] }));
+  };
 
   const statusLabels = useMemo<Record<TaskV2Status, string>>(() => ({
     todo: 'To Do',
@@ -175,14 +223,16 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
   };
 
   const byStatus = useMemo(() => ({
-    todo: tasks.filter(t => t.status === 'todo'),
-    in_progress: tasks.filter(t => t.status === 'in_progress'),
-    validation: tasks.filter(t => t.status === 'validation'),
-    done: tasks.filter(t => t.status === 'done'),
-    archived: tasks.filter(t => t.status === 'archived').sort((a, b) => (b.approvedAt || b.createdAt || 0) - (a.approvedAt || a.createdAt || 0))
-  }), [tasks]);
+    todo: filteredTasks.filter(t => t.status === 'todo'),
+    in_progress: filteredTasks.filter(t => t.status === 'in_progress'),
+    validation: filteredTasks.filter(t => t.status === 'validation'),
+    done: filteredTasks.filter(t => t.status === 'done'),
+    archived: filteredTasks.filter(t => t.status === 'archived').sort((a, b) => (b.approvedAt || b.createdAt || 0) - (a.approvedAt || a.createdAt || 0))
+  }), [filteredTasks]);
 
   const activeCount = byStatus.in_progress.length + byStatus.validation.length;
+  const noTasks = tasks.length === 0;
+  const noFilteredMatches = !noTasks && filteredTasks.length === 0;
 
   function openApproval(task: TaskV2) {
     setSelectedTask(task);
@@ -203,9 +253,11 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
     if (viewedTask) {
       setTitleDraft(viewedTask.title);
       setDescriptionDraft(viewedTask.description ?? '');
+      setPriorityDraft(!!viewedTask.isPriority);
     } else {
       setTitleDraft('');
       setDescriptionDraft('');
+      setPriorityDraft(false);
     }
   }, [viewedTask]);
 
@@ -214,16 +266,27 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
   const titleError = trimmedTitle.length === 0;
   const detailsDirty = viewedTask ? (
     trimmedTitle !== viewedTask.title.trim() ||
-    trimmedDescription !== (viewedTask.description ?? '').trim()
+    trimmedDescription !== (viewedTask.description ?? '').trim() ||
+    priorityDraft !== !!viewedTask.isPriority
   ) : false;
 
   const handleSaveDetails = () => {
     if (!viewedTask) return;
     if (!trimmedTitle) return;
+    const changeNotes: string[] = [];
+    if (trimmedTitle !== viewedTask.title.trim()) changeNotes.push('назву задачі');
+    if (trimmedDescription !== (viewedTask.description ?? '').trim()) changeNotes.push('опис задачі');
     updateDetails(viewedTask.id, {
       title: trimmedTitle,
-      description: trimmedDescription === '' ? undefined : descriptionDraft
+      description: trimmedDescription === '' ? undefined : descriptionDraft,
+      isPriority: priorityDraft
     });
+    if (changeNotes.length > 0) {
+      const message = changeNotes.length === 2
+        ? 'Оновлено назву та опис задачі'
+        : `Оновлено ${changeNotes[0]}`;
+      addComment(viewedTask.id, message);
+    }
   };
 
   const activityEntries = useMemo(() => {
@@ -238,11 +301,92 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
   }, [viewedTask]);
 
   return (
-    <div style={{ padding: 24, height: '100%', display: 'flex', flexDirection: 'column', gap: 18, background: 'var(--surface-panel-alt)' }}>
+    <div style={{ padding: 24, height: '100%', display: 'flex', flexDirection: 'column', gap: 18, background: 'var(--surface-panel-alt)', position: 'relative' }}>
+      <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <input
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
+          placeholder="Пошук задачі за назвою або номером"
+          style={{
+            padding: '10px 14px',
+            borderRadius: 12,
+            border: '1px solid var(--border-subtle)',
+            background: 'var(--surface-panel)',
+            color: 'var(--fg)',
+            fontSize: 14,
+            boxShadow: 'var(--shadow-sm)'
+          }}
+        />
+        {(searchFocused || searchQuery.trim()) && searchSuggestions.length > 0 && (
+          <ul
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 6px)',
+              left: 0,
+              right: 0,
+              margin: 0,
+              padding: 8,
+              listStyle: 'none',
+              background: 'var(--surface-card)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 12,
+              boxShadow: 'var(--shadow-md)',
+              display: 'grid',
+              gap: 6,
+              zIndex: 20,
+              maxHeight: 260,
+              overflow: 'auto'
+            }}
+          >
+            {searchSuggestions.map(s => (
+              <li
+                key={s.id}
+                onMouseDown={e => {
+                  e.preventDefault();
+                  setViewTaskId(s.id);
+                  setSearchQuery('');
+                }}
+                data-testid={`task-suggestion-${s.id}`}
+                style={{
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 10,
+                  cursor: 'pointer',
+                  background: 'var(--surface-panel)'
+                }}
+              >
+                <span style={{ display: 'grid' }}>
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>#{s.taskNumber ?? '—'}</span>
+                  <span style={{ fontWeight: 600 }}>{s.title}</span>
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{statusLabels[s.status]}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <header style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{ flex: 1 }}>
           <h2 style={{ margin: 0, fontSize: 32 }}>Дошка задач</h2>
           <div style={{ fontSize: 13, color: 'var(--muted)' }}>{activeCount} активних задач</div>
+        </div>
+        <div style={{ display: 'grid', gap: 4 }}>
+          <span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Фільтр за виконавцем</span>
+          <select
+            value={assigneeFilter}
+            onChange={e => setAssigneeFilter(e.target.value)}
+            style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)' }}
+          >
+            <option value="all">Усі виконавці</option>
+            {fighters.map(f => (
+              <option key={f.id} value={f.id}>{f.name}</option>
+            ))}
+          </select>
         </div>
         <button
           onClick={() => setOpen(true)}
@@ -250,7 +394,7 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
         >+ Нова задача</button>
       </header>
 
-      {tasks.length === 0 ? (
+      {noTasks ? (
         <div style={{ flex: 1, borderRadius: 18, border: '1px dashed var(--border-subtle)', background: 'var(--surface-glass-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)' }}>
           <EmptyState
             icon="🗂️"
@@ -259,88 +403,159 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
             action={{ label: '+ Створити задачу', onClick: () => setOpen(true) }}
           />
         </div>
+      ) : noFilteredMatches ? (
+        <div style={{ flex: 1, borderRadius: 18, border: '1px dashed var(--border-subtle)', background: 'var(--surface-glass-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)' }}>
+          <EmptyState
+            icon="🕵️"
+            title="Немає задач за вибраним виконавцем"
+            description="Спробуйте вибрати іншого бійця або скинути фільтр."
+            action={assigneeFilter !== 'all' ? { label: 'Скинути фільтр', onClick: () => setAssigneeFilter('all') } : undefined}
+          />
+        </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(260px, 1fr))', gap: 18, minHeight: 0, flex: 1 }}>
-          {([['todo','To Do'],['in_progress','In Progress'],['validation','Validation'],['done','Done']] as [TaskV2Status,string][]) .map(([key, title]) => (
-            <div
-              key={key}
-              onDragOver={(e) => { e.preventDefault(); setDropTargetStatus(key); }}
-              onDragLeave={() => setDropTargetStatus(null)}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (draggedTaskId) {
-                  const task = tasks.find(t => t.id === draggedTaskId);
-                  if (task && task.status !== key) {
-                    if (key === 'done') {
-                      if (task.status !== 'validation') {
-                        updateStatus(draggedTaskId, 'validation');
+          {BOARD_COLUMNS.map(([key, title]) => {
+            const columnTasks = byStatus[key];
+            const expanded = expandedColumns[key];
+            const visibleTasks = expanded ? columnTasks : columnTasks.slice(0, COLUMN_VISIBLE_LIMIT);
+            const hiddenCount = Math.max(columnTasks.length - COLUMN_VISIBLE_LIMIT, 0);
+            return (
+              <div
+                key={key}
+                onDragOver={(e) => { e.preventDefault(); setDropTargetStatus(key); }}
+                onDragLeave={() => setDropTargetStatus(null)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (draggedTaskId) {
+                    const task = tasks.find(t => t.id === draggedTaskId);
+                    if (task && task.status !== key) {
+                      if (key === 'done') {
+                        if (task.status !== 'validation') {
+                          updateStatus(draggedTaskId, 'validation');
+                        }
+                        openApproval({ ...task, status: 'validation' });
+                      } else {
+                        updateStatus(draggedTaskId, key);
                       }
-                      openApproval({ ...task, status: 'validation' });
-                    } else {
-                      updateStatus(draggedTaskId, key);
                     }
                   }
-                }
-                setDraggedTaskId(null);
-                setDropTargetStatus(null);
-              }}
-              style={{
-                borderRadius: 18,
-                padding: 14,
-                minHeight: 280,
-                display: 'flex',
-                flexDirection: 'column',
-                background: dropTargetStatus === key
-                  ? 'var(--surface-success-soft)'
-                  : 'var(--surface-card)',
-                border: dropTargetStatus === key ? '1px solid var(--success-soft-border)' : '1px solid var(--border-subtle)',
-                boxShadow: 'var(--shadow-lg)',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ fontWeight: 700, fontSize: 16, color: statusBadge(key).fg }}>{title}</div>
-                <span style={{ marginLeft: 'auto', fontSize: 12, color: statusBadge(key).fg }}>{byStatus[key].length}</span>
-              </div>
-              <div style={{ display: 'grid', gap: 12, overflow: 'auto', paddingTop: 12 }}>
-                {byStatus[key].map(t => (
-                  <div
-                    key={t.id}
-                    draggable
-                    onDragStart={() => setDraggedTaskId(t.id)}
-                    onDragEnd={() => { setDraggedTaskId(null); setDropTargetStatus(null); }}
-                    onClick={() => setViewTaskId(t.id)}
-                    style={{
-                      borderRadius: 14,
-                      padding: 14,
-                      background: draggedTaskId === t.id
-                        ? 'var(--surface-accent-lift)'
-                        : 'var(--surface-card-alt)',
-                      border: '1px solid var(--border-subtle)',
-                      boxShadow: 'var(--shadow-md)',
-                      cursor: 'grab',
-                      opacity: draggedTaskId === t.id ? 0.55 : 1,
-                      transition: 'opacity 0.15s ease, transform 0.15s ease'
-                    }}
-                  >
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>#{t.taskNumber ?? '—'}</div>
-                      <strong style={{ flex: 1, fontSize: 15 }}>{t.title}</strong>
-                      <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 999, background: 'var(--surface-accent-pill)', border: '1px solid var(--surface-accent-pill-border)', color: 'var(--fg)' }}>⚩️ {t.difficulty}</span>
-                    </div>
-                    <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
-                      {t.assignees.map(a => (
-                        <div key={a.fighterId} style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 6 }}>
-                          <span style={{ fontWeight: 600, color: 'var(--muted)' }}>Виконавець:</span>
-                          <span style={{ fontWeight: 600, color: 'var(--fg)' }}>{fighters.find(f => f.id === a.fighterId)?.name}</span>
+                  setDraggedTaskId(null);
+                  setDropTargetStatus(null);
+                }}
+                style={{
+                  borderRadius: 18,
+                  padding: 14,
+                  minHeight: 280,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  background: dropTargetStatus === key
+                    ? 'var(--surface-success-soft)'
+                    : 'var(--surface-card)',
+                  border: dropTargetStatus === key ? '1px solid var(--success-soft-border)' : '1px solid var(--border-subtle)',
+                  boxShadow: 'var(--shadow-lg)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: statusBadge(key).fg }}>{title}</div>
+                  <span style={{ marginLeft: 'auto', fontSize: 12, color: statusBadge(key).fg }}>{byStatus[key].length}</span>
+                </div>
+                <div style={{ display: 'grid', gap: 12, overflow: 'auto', paddingTop: 12 }}>
+                  {visibleTasks.map(t => (
+                    <div
+                      key={t.id}
+                      draggable
+                      onDragStart={() => setDraggedTaskId(t.id)}
+                      onDragEnd={() => { setDraggedTaskId(null); setDropTargetStatus(null); }}
+                      onClick={() => setViewTaskId(t.id)}
+                      style={{
+                        borderRadius: 14,
+                        padding: 14,
+                        background: draggedTaskId === t.id
+                          ? 'var(--surface-accent-lift)'
+                          : 'var(--surface-card-alt)',
+                        border: '1px solid var(--border-subtle)',
+                        boxShadow: 'var(--shadow-md)',
+                        cursor: 'grab',
+                        opacity: draggedTaskId === t.id ? 0.55 : 1,
+                        transition: 'opacity 0.15s ease, transform 0.15s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {t.isPriority && <span className="priority-indicator" title="Пріоритетно" aria-label="Пріоритетно" />}
+                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>#{t.taskNumber ?? '—'}</div>
+                        <strong style={{ flex: 1, fontSize: 15 }}>{t.title}</strong>
+                        {key === 'done' && (
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              updateStatus(t.id, 'archived');
+                            }}
+                            title="Архівувати"
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: 999,
+                              border: '1px solid var(--border-subtle)',
+                              background: 'var(--surface-panel)',
+                              color: 'var(--muted)',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                          >Архів</button>
+                        )}
+                        <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 999, background: 'var(--surface-accent-pill)', border: '1px solid var(--surface-accent-pill-border)', color: 'var(--fg)' }}>⚩️ {t.difficulty}</span>
+                      </div>
+                      <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {t.assignees.map(a => {
+                          const fighter = fightersMap.get(a.fighterId);
+                          if (!fighter) return null;
+                          const label = fighter.callsign || fighter.name;
+                          return (
+                            <span
+                              key={a.fighterId}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '4px 10px',
+                                borderRadius: 999,
+                                border: '1px solid var(--border-subtle)',
+                                background: 'var(--surface-panel)',
+                                fontSize: 11,
+                                fontWeight: 600
+                              }}
+                            >
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--surface-accent-pill)', display: 'inline-block' }} />
+                              {label}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      {t.comments?.length ? (
+                        <div style={{ marginTop: 8, fontSize: 11, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            💬
+                            <strong style={{ fontSize: 11, color: 'var(--fg)' }}>{t.comments[t.comments.length - 1]?.author}</strong>
+                          </span>
+                          <span>•</span>
+                          <span>{formatDateTime(t.comments[t.comments.length - 1]?.createdAt)}</span>
                         </div>
-                      ))}
+                      ) : null}
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                {hiddenCount > 0 && (
+                  <button
+                    onClick={() => toggleColumnExpansion(key)}
+                    style={{ marginTop: 8, alignSelf: 'center', padding: '6px 12px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)', fontSize: 12 }}
+                  >
+                    {expanded ? 'Згорнути список' : `Показати ще ${hiddenCount}`}
+                  </button>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -351,8 +566,8 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
         categories={categories}
         tasks={tasks}
         fighterSkillLevels={fighterSkillLevels}
-        onCreate={({ title, description, difficulty, assignees }) => {
-          createTask({ title, description, difficulty, assignees });
+        onCreate={({ title, description, difficulty, assignees, isPriority }) => {
+          createTask({ title, description, difficulty, assignees, isPriority });
           setOpen(false);
         }}
       />
@@ -366,7 +581,15 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
             <button onClick={() => setSelectedTask(null)} style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)' }}>Скасувати</button>
             <button
-              onClick={() => { approveTask(selectedTask.id, approved); setSelectedTask(null); }}
+              onClick={() => {
+                const trimmedComment = approvalComment.trim();
+                if (trimmedComment) {
+                  addComment(selectedTask.id, trimmedComment);
+                  setApprovalComment('');
+                }
+                approveTask(selectedTask.id, approved);
+                setSelectedTask(null);
+              }}
               style={{ padding: '8px 14px', borderRadius: 10, background: 'var(--success-soft-bg)', border: '1px solid var(--success-soft-border)', color: 'var(--fg)', fontWeight: 600, boxShadow: 'var(--shadow-sm)' }}
             >Затвердити</button>
           </div>
@@ -488,6 +711,14 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
               />
             </section>
 
+            <section style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 6 }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                <input type="checkbox" checked={priorityDraft} onChange={e => setPriorityDraft(e.target.checked)} />
+                <span style={{ fontWeight: 600, color: 'var(--fg)' }}>Пріоритетно</span>
+              </label>
+              {priorityDraft && <span style={{ fontSize: 12, color: 'var(--muted)', flex: '1 1 220px' }}>Задача буде позначена як термінова на дошці</span>}
+            </section>
+
             <section style={{ display: 'grid', gap: 16 }}>
               <strong style={{ fontSize: 15, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--muted)' }}>Деталі</strong>
               <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
@@ -602,12 +833,35 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
           <summary style={{ cursor: 'pointer' }}>Архів задач ({byStatus.archived.length})</summary>
           <ul style={{ margin: '8px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: 6 }}>
             {byStatus.archived.map(task => (
-              <li key={task.id} style={{ border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '8px 10px', background: 'var(--surface-panel-alt)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>#{task.taskNumber ?? '—'} · {task.title}</span>
-                <button
-                  onClick={() => updateStatus(task.id, 'todo')}
-                  style={{ padding: '4px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)', fontSize: 11 }}
-                >Повернути</button>
+              <li
+                key={task.id}
+                onClick={() => setViewTaskId(task.id)}
+                style={{
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 10,
+                  padding: '8px 10px',
+                  background: 'var(--surface-panel-alt)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  gap: 8
+                }}
+              >
+                <span style={{ display: 'grid' }}>
+                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>#{task.taskNumber ?? '—'}</span>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{task.title}</span>
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, color: 'var(--muted)' }}>{formatDateTime(task.approvedAt ?? task.submittedAt ?? task.createdAt)}</span>
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      updateStatus(task.id, 'todo');
+                    }}
+                    style={{ padding: '4px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)', fontSize: 11 }}
+                  >Повернути</button>
+                </div>
               </li>
             ))}
             {byStatus.archived.length === 0 && <li style={{ padding: 8 }}>Архів порожній.</li>}

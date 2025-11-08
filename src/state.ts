@@ -361,7 +361,16 @@ export function useSkillRpgState() {
     const id = generateId('task');
     const nextNumber = tasksV2.reduce((max, task) => Math.max(max, task.taskNumber ?? 0), 0) + 1;
     const timestamp = Date.now();
-    const task: TaskV2 = { id, status: 'todo', createdAt: timestamp, taskNumber: nextNumber, history: [{ fromStatus: null, toStatus: 'todo', changedAt: timestamp }], comments: [], ...payload };
+    const task: TaskV2 = {
+      id,
+      status: 'todo',
+      createdAt: timestamp,
+      taskNumber: nextNumber,
+      history: [{ fromStatus: null, toStatus: 'todo', changedAt: timestamp }],
+      comments: [],
+      ...payload,
+      isPriority: payload.isPriority ?? false
+    };
     setTasksV2(prev => [task, ...prev]);
   }
 
@@ -381,7 +390,7 @@ export function useSkillRpgState() {
     }));
   }
 
-  function updateTaskV2Details(taskId: string, updates: { title?: string; description?: string }) {
+  function updateTaskV2Details(taskId: string, updates: { title?: string; description?: string; isPriority?: boolean }) {
     setTasksV2(prev => prev.map(t => {
       if (t.id !== taskId) return t;
       const next = { ...t } as TaskV2;
@@ -390,6 +399,9 @@ export function useSkillRpgState() {
       }
       if (Object.prototype.hasOwnProperty.call(updates, 'description')) {
         next.description = updates.description;
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, 'isPriority')) {
+        next.isPriority = !!updates.isPriority;
       }
       return next;
     }));

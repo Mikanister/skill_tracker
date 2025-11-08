@@ -10,13 +10,14 @@ type Props = {
   categories: Category[];
   tasks?: TaskV2[];
   fighterSkillLevels: Record<string, FighterSkillLevels>;
-  onCreate: (payload: { title: string; description?: string; difficulty: 1|2|3|4|5; assignees: TaskV2Assignee[] }) => void;
+  onCreate: (payload: { title: string; description?: string; difficulty: 1|2|3|4|5; assignees: TaskV2Assignee[]; isPriority?: boolean }) => void;
 };
 
 export default function MultiAssignTaskModal({ open, onClose, fighters, categories, tasks = [], fighterSkillLevels, onCreate }: Props) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [difficulty, setDifficulty] = useState<1|2|3|4|5>(3);
+  const [isPriority, setIsPriority] = useState(false);
   const [selectedFighters, setSelectedFighters] = useState<Record<string, boolean>>({});
   const [assigneeSkills, setAssigneeSkills] = useState<Record<string, Record<string, number>>>({}); // fighterId -> skillId -> xp
   const [search, setSearch] = useState('');
@@ -110,8 +111,8 @@ export default function MultiAssignTaskModal({ open, onClose, fighters, categori
                 setFormError('Оберіть хоча б одного виконавця та додайте йому навички.');
                 return;
               }
-              onCreate({ title: title.trim(), description: description.trim(), difficulty, assignees });
-              setTitle(''); setDescription(''); setSelectedFighters({}); setAssigneeSkills({}); setSearch(''); setDifficulty(3); onClose();
+              onCreate({ title: title.trim(), description: description.trim(), difficulty, assignees, isPriority });
+              setTitle(''); setDescription(''); setSelectedFighters({}); setAssigneeSkills({}); setSearch(''); setDifficulty(3); setIsPriority(false); onClose();
               setFormError(null);
             }}
             disabled={!title.trim()}
@@ -139,6 +140,10 @@ export default function MultiAssignTaskModal({ open, onClose, fighters, categori
             </select>
           </label>
         </div>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--fg)', cursor: 'pointer' }}>
+          <input type="checkbox" checked={isPriority} onChange={e => setIsPriority(e.target.checked)} />
+          <span style={{ fontWeight: 600 }}>Пріоритетно</span>
+        </label>
         <label style={{ display: 'grid', gap: 6, fontSize: 13, color: 'var(--muted)' }}>
           <span style={{ fontWeight: 600, color: 'var(--fg)' }}>Опис</span>
           <textarea value={description} onChange={e => setDescription(e.target.value)} rows={4} placeholder="Додайте короткий опис" style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)', boxShadow: 'var(--shadow-sm)' }} />

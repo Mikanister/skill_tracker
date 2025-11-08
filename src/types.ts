@@ -119,5 +119,6 @@ export type TaskV2 = {
   taskNumber?: number;
   history?: TaskStatusHistoryEntry[];
   comments?: TaskComment[];
+  isPriority?: boolean;
 };
 

@@ -293,3 +293,17 @@ textarea::placeholder {
   body { background: #fff; color: #000; }
 }
 
+.priority-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.65);
+  animation: priority-pulse 1s ease-in-out infinite;
+}
+
+@keyframes priority-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
