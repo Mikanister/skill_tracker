@@ -1,6 +1,10 @@
 import React, { useMemo, useState } from 'react';
+import clsx from 'clsx';
 import { Category, Skill, Fighter, FighterSkillLevels } from '@/types';
 import { Modal } from '@/components/Modal';
+import { buildSkillUsage, calculateSkillStats } from '@/utils/skills';
+import { useFormState } from '@/hooks/useFormState';
+import { useModalState } from '@/hooks/useModalState';
 
 type Props = {
   categories: Category[];
@@ -17,19 +21,52 @@ type Props = {
 
 export default function Skills({ categories, fighters, fighterSkillLevels, addSkill, updateSkill, deleteSkill, addCategory, renameCategory, deleteCategory, moveSkillToCategory }: Props) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(categories[0]?.id ?? null);
-  const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
-  const [viewOpen, setViewOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [editName, setEditName] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [viewName, setViewName] = useState('');
-  const [viewDescription, setViewDescription] = useState('');
   const [catEditOpen, setCatEditOpen] = useState(false);
   const [catEditName, setCatEditName] = useState('');
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [draggedSkillId, setDraggedSkillId] = useState<string | null>(null);
   const [dropTargetCategoryId, setDropTargetCategoryId] = useState<string | null>(null);
+
+  const {
+    isOpen: isEditOpen,
+    data: editSkill,
+    open: openEditModal,
+    close: closeEditModal,
+    setData: setEditModalData
+  } = useModalState<Skill | null>(false, null);
+
+  const {
+    isOpen: isViewOpen,
+    data: viewSkill,
+    open: openViewModal,
+    close: closeViewModal,
+    setData: setViewModalData
+  } = useModalState<Skill | null>(false, null);
+
+  const {
+    values: editValues,
+    setValues: setEditValues,
+    reset: resetEditForm,
+    registerField: registerEditField,
+    validate: validateEditForm,
+    errors: editErrors,
+    clearErrors: clearEditErrors
+  } = useFormState({ name: '', description: '' }, {
+    name: value => (typeof value === 'string' && value.trim().length > 0 ? null : 'Вкажіть назву навички.')
+  });
+
+  const {
+    values: viewValues,
+    setValues: setViewValues,
+    reset: resetViewForm,
+    registerField: registerViewField,
+    validate: validateViewForm,
+    errors: viewErrors,
+    clearErrors: clearViewErrors
+  } = useFormState({ name: '', description: '' }, {
+    name: value => (typeof value === 'string' && value.trim().length > 0 ? null : 'Вкажіть назву навички.')
+  });
 
   const selectedCategory = useMemo(() => categories.find(c => c.id === selectedCategoryId), [categories, selectedCategoryId]);
 
@@ -40,88 +77,50 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
     return selectedCategory.skills.filter(s => s.name.toLowerCase().includes(term) || s.description?.toLowerCase().includes(term));
   }, [selectedCategory, search]);
 
-  const skillUsage = useMemo(() => {
-    const usage = new Map<string, { count: number; maxLevel: number }>();
-    fighters.forEach(f => {
-      const levels = fighterSkillLevels[f.id] || {};
-      Object.entries(levels).forEach(([skillId, lvl]) => {
-        const levelNum = Number(lvl) || 0;
-        if (!usage.has(skillId)) usage.set(skillId, { count: 0, maxLevel: 0 });
-        if (levelNum > 0) {
-          const stats = usage.get(skillId)!;
-          stats.count += 1;
-          stats.maxLevel = Math.max(stats.maxLevel, levelNum);
-        }
-      });
-    });
-    return usage;
-  }, [fighters, fighterSkillLevels]);
+  const skillUsage = useMemo(() => buildSkillUsage(fighters, fighterSkillLevels), [fighters, fighterSkillLevels]);
 
   function openEdit(skill?: Skill) {
+    clearEditErrors();
     if (skill) {
-      setSelectedSkill(skill);
-      setEditName(skill.name);
-      setEditDescription(skill.description || '');
+      openEditModal(skill);
+      setEditValues({ name: skill.name, description: skill.description || '' });
     } else {
-      setSelectedSkill(null);
-      setEditName('');
-      setEditDescription('');
+      openEditModal(null);
+      resetEditForm({ name: '', description: '' });
     }
-    setEditOpen(true);
   }
 
   function openView(skill: Skill) {
-    setSelectedSkill(skill);
-    setViewName(skill.name);
-    setViewDescription(skill.description || '');
-    setViewOpen(true);
+    clearViewErrors();
+    openViewModal(skill);
+    setViewValues({ name: skill.name, description: skill.description || '' });
   }
 
   function saveSkill() {
-    const name = editName.trim();
-    if (!name) return;
-    if (selectedSkill) {
-      updateSkill({ ...selectedSkill, name, description: editDescription.trim() });
+    if (!validateEditForm()) return;
+    const name = editValues.name.trim();
+    if (editSkill) {
+      updateSkill({ ...editSkill, name, description: editValues.description.trim() });
     } else if (selectedCategoryId) {
       addSkill(selectedCategoryId, name);
     }
-    setEditOpen(false);
+    resetEditForm({ name: '', description: '' });
+    setEditModalData(() => null);
+    closeEditModal();
   }
 
-  const selectedSkillStats = useMemo(() => {
-    if (!selectedSkill) return null;
-    const fighterEntries = fighters
-      .map(f => ({
-        fighter: f,
-        level: Number(fighterSkillLevels[f.id]?.[selectedSkill.id] ?? 0)
-      }))
-      .filter(entry => entry.level > 0)
-      .sort((a, b) => b.level - a.level);
-    const total = fighterEntries.reduce((sum, entry) => sum + entry.level, 0);
-    const average = fighterEntries.length ? (total / fighterEntries.length).toFixed(1) : '0.0';
-    const byUnit = fighterEntries.reduce<Record<string, number>>((acc, entry) => {
-      const unit = (entry.fighter.unit || 'Без підрозділу').trim();
-      acc[unit] = (acc[unit] ?? 0) + 1;
-      return acc;
-    }, {});
-    return {
-      fighters: fighterEntries,
-      average,
-      count: fighterEntries.length,
-      byUnit
-    };
-  }, [selectedSkill, fighters, fighterSkillLevels]);
+  const selectedSkillStats = useMemo(() => viewSkill ? calculateSkillStats(viewSkill.id, fighters, fighterSkillLevels) : null, [viewSkill, fighters, fighterSkillLevels]);
 
   return (
-    <div style={{ height: '100%', display: 'grid', gridTemplateColumns: '260px 1fr', gap: 16, padding: 12, background: 'var(--surface-panel-alt)' }}>
-      <aside style={{ border: '1px solid var(--border-subtle)', padding: 16, display: 'grid', gap: 16, gridTemplateRows: 'auto 1fr auto', background: 'var(--surface-panel)', borderRadius: 14, boxShadow: 'var(--shadow-md)' }}>
-        <div>
-          <div style={{ fontSize: 12, color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Категорії</div>
-          <strong style={{ fontSize: 20 }}>Каталог</strong>
+    <div className="skills-layout">
+      <aside className="skills-sidebar">
+        <div className="skills-sidebar-header">
+          <div className="text-xs text-muted" style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>Категорії</div>
+          <strong className="text-md text-strong">Каталог</strong>
         </div>
-        <div style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
+        <div className="skills-category-list">
           {categories.map(cat => (
-            <div key={cat.id} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div key={cat.id} className="skills-category-item">
               <button
                 onClick={() => setSelectedCategoryId(cat.id)}
                 onDragOver={(e) => { e.preventDefault(); setDropTargetCategoryId(cat.id); }}
@@ -134,55 +133,20 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
                   setDraggedSkillId(null);
                   setDropTargetCategoryId(null);
                 }}
-                style={{
-                  flex: 1,
-                  textAlign: 'left',
-                  padding: '10px 12px',
-                  borderRadius: 12,
-                  background: dropTargetCategoryId === cat.id
-                    ? 'var(--surface-success-soft)'
-                    : cat.id === selectedCategoryId
-                      ? 'var(--accent-soft-bg)'
-                      : 'var(--surface-panel-alt)',
-                  border: dropTargetCategoryId === cat.id ? '1px solid var(--success-soft-border)' : '1px solid var(--border-subtle)',
-                  color: 'var(--fg)',
-                  fontWeight: cat.id === selectedCategoryId ? 600 : 500,
-                  letterSpacing: '0.01em',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  transition: 'transform 0.15s ease, box-shadow 0.15s ease'
-                }}
+                className={clsx(
+                  'skills-category-btn',
+                  {
+                    'is-selected': cat.id === selectedCategoryId,
+                    'is-drop-target': dropTargetCategoryId === cat.id
+                  }
+                )}
               >
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minWidth: 24,
-                  height: 24,
-                  padding: '0 8px',
-                  borderRadius: 8,
-                  background: 'rgba(59,130,246,0.18)',
-                  fontSize: 12,
-                  color: 'rgba(191,219,254,0.85)',
-                  fontWeight: 600
-                }}>{(cat.skills?.length ?? 0)}</span>
+                <span className="skills-category-count">{(cat.skills?.length ?? 0)}</span>
                 <span style={{ flex: 1 }}>{cat.name}</span>
               </button>
               <button
                 onClick={() => { setEditingCategory(cat); setCatEditName(cat.name); setCatEditOpen(true); }}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  border: '1px solid var(--border-subtle)',
-                  background: 'var(--surface-panel-alt)',
-                  color: 'var(--fg)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 13
-                }}
+                className="icon-button"
                 aria-label={`Редагувати категорію «${cat.name}»`}
               >✎</button>
             </div>
@@ -190,51 +154,37 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
         </div>
         <button
           onClick={() => { setEditingCategory(null); setCatEditName(''); setCatEditOpen(true); }}
-          style={{
-            padding: '10px 12px',
-            borderRadius: 12,
-            border: '1px solid var(--accent-soft-border)',
-            background: 'var(--accent-soft-pill)',
-            color: 'var(--fg)',
-            fontWeight: 600,
-            letterSpacing: '0.03em'
-          }}
+          className="btn-accent-pill"
         >+ Нова категорія</button>
       </aside>
 
-      <section style={{ padding: 0, display: 'grid', gridTemplateRows: 'auto auto 1fr', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ margin: 0, fontSize: 26 }}>{selectedCategory?.name || 'Каталог навичок'}</h2>
-            <div style={{ fontSize: 13, color: 'var(--muted)' }}>{filteredSkills.length} навичок у категорії</div>
+      <section className="skills-content">
+        <div className="skills-header">
+          <div className="skills-header-title">
+            <h2 className="text-xl text-strong" style={{ margin: 0 }}>{selectedCategory?.name || 'Каталог навичок'}</h2>
+            <div className="skills-header-meta">{filteredSkills.length} навичок у категорії</div>
           </div>
           <input
             placeholder="Пошук навички"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{ width: 320, padding: '10px 14px', borderRadius: 12, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)', boxShadow: 'var(--shadow-sm)' }}
+            className="search-input skills-search"
           />
           <button
             onClick={() => openEdit()}
-            style={{ padding: '10px 16px', borderRadius: 12, background: 'var(--accent-soft-bg)', border: '1px solid var(--accent-soft-border)', color: 'var(--fg)', fontWeight: 600, boxShadow: 'var(--shadow-sm)' }}
+            className="btn-primary"
           >+ Додати навичку</button>
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: 16,
-          alignContent: 'start',
-          paddingBottom: 24
-        }}>
+        <div className="skills-grid">
           {filteredSkills.length === 0 && (
-            <div style={{ gridColumn: '1 / -1', padding: '36px 32px', borderRadius: 20, border: '1px dashed var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--muted)', fontSize: 15, display: 'grid', gap: 12, justifyItems: 'center' }}>
-              <strong style={{ fontSize: 18, color: 'var(--fg)' }}>У цій категорії поки немає навичок</strong>
+            <div className="skills-empty-card">
+              <strong className="skills-empty-title">У цій категорії поки немає навичок</strong>
               <span>Додайте першу навичку або скористайтесь пошуком.</span>
               <button
                 onClick={() => openEdit()}
                 data-testid="empty-add-skill"
-                style={{ padding: '10px 16px', borderRadius: 12, border: '1px solid var(--accent-soft-border)', background: 'var(--accent-soft-bg)', color: 'var(--fg)', fontWeight: 600 }}
+                className="btn-primary"
               >+ Додати навичку</button>
             </div>
           )}
@@ -246,20 +196,7 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
                 draggable
                 onDragStart={() => setDraggedSkillId(skill.id)}
                 onDragEnd={() => { setDraggedSkillId(null); setDropTargetCategoryId(null); }}
-                style={{
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 16,
-                  padding: 16,
-                  background: draggedSkillId === skill.id
-                    ? 'var(--surface-accent-lift)'
-                    : 'var(--surface-card)',
-                  display: 'grid',
-                  gap: 10,
-                  boxShadow: 'var(--shadow-md)',
-                  cursor: 'grab',
-                  opacity: draggedSkillId === skill.id ? 0.55 : 1,
-                  transition: 'opacity 0.15s ease, transform 0.15s ease'
-                }}
+                className={clsx('skill-card', { 'is-dragging': draggedSkillId === skill.id })}
                 onClick={() => openView(skill)}
                 role="button"
                 tabIndex={0}
@@ -270,16 +207,16 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
                   }
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <strong style={{ flex: '1 1 160px', fontSize: 17 }}>{skill.name}</strong>
+                <div className="flex-row align-center gap-12" style={{ flexWrap: 'wrap' }}>
+                  <strong className="skill-card-title">{skill.name}</strong>
                 </div>
                 {skill.description && (
-                  <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.45 }}>{skill.description}</div>
+                  <div className="skill-card-description">{skill.description}</div>
                 )}
-                <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--muted)' }}>
-                  <span style={{ padding: '2px 8px', borderRadius: 999, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel-alt)' }}>Бійців: {usage.count}</span>
+                <div className="flex-row gap-8" style={{ fontSize: 11, color: 'var(--muted)' }}>
+                  <span className="chip">Бійців: {usage.count}</span>
                   {usage.maxLevel > 0 && (
-                    <span style={{ padding: '2px 8px', borderRadius: 999, border: '1px solid var(--surface-accent-pill-border)', background: 'var(--surface-accent-pill)', color: 'var(--fg)' }}>Макс. рівень {usage.maxLevel}</span>
+                    <span className="chip chip--accent">Макс. рівень {usage.maxLevel}</span>
                   )}
                 </div>
               </article>
@@ -288,98 +225,125 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
         </div>
       </section>
 
-      <Modal open={editOpen} onClose={() => setEditOpen(false)} title={selectedSkill ? 'Редагувати навичку' : 'Нова навичка'} width={600}>
-        <div style={{ display: 'grid', gap: 12 }}>
-          <label style={{ display: 'grid', gap: 6 }}>
+      <Modal
+        open={isEditOpen}
+        onClose={() => {
+          closeEditModal();
+          setEditModalData(() => null);
+          clearEditErrors();
+        }}
+        title={editSkill ? 'Редагувати навичку' : 'Нова навичка'}
+        width={600}
+      >
+        <div className="skills-modal-grid">
+          <label className="labeled-field">
             <span>Назва</span>
-            <input value={editName} onChange={e => setEditName(e.target.value)} style={{ padding: 8, borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)' }} />
+            <input {...registerEditField('name')} className="input-control" />
+            {editErrors.name && <span className="text-xs text-muted" style={{ color: 'var(--danger)' }}>{editErrors.name}</span>}
           </label>
-          <label style={{ display: 'grid', gap: 6 }}>
+          <label className="labeled-field">
             <span>Опис</span>
-            <textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={4} style={{ padding: 8, borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)' }} />
+            <textarea {...registerEditField('description')} rows={4} className="textarea-control" />
           </label>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <button onClick={() => setEditOpen(false)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel-alt)', color: 'var(--fg)' }}>Скасувати</button>
-            <button onClick={saveSkill} style={{ padding: '6px 10px', background: 'var(--success-soft-bg)', border: '1px solid var(--success-soft-border)', borderRadius: 8, color: 'var(--fg)' }}>Зберегти</button>
+          <div className="skills-modal-actions">
+            <button
+              onClick={() => {
+                closeEditModal();
+                setEditModalData(() => null);
+              }}
+              className="btn-panel"
+            >Скасувати</button>
+            <button onClick={saveSkill} className="btn-primary-soft">Зберегти</button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={viewOpen && !!selectedSkill} onClose={() => setViewOpen(false)} title={`Навичка: ${selectedSkill?.name || ''}`} width={720}
-        footer={selectedSkill ? (
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+      <Modal
+        open={isViewOpen && !!viewSkill}
+        onClose={() => {
+          closeViewModal();
+          setViewModalData(() => null);
+          clearViewErrors();
+        }}
+        title={`Навичка: ${viewValues.name || viewSkill?.name || ''}`}
+        width={720}
+        footer={viewSkill ? (
+          <div className="skills-modal-footer">
             <button
               onClick={() => {
-                if (selectedSkill && confirm(`Видалити навичку «${selectedSkill.name}»?`)) {
-                  deleteSkill(selectedSkill.id);
-                  setViewOpen(false);
+                if (viewSkill && confirm(`Видалити навичку «${viewSkill.name}»?`)) {
+                  deleteSkill(viewSkill.id);
+                  closeViewModal();
+                  setViewModalData(() => null);
                 }
               }}
-              style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--danger-soft-border)', background: 'var(--danger-soft-bg)', color: 'var(--fg)', fontWeight: 600 }}
+              className="btn-danger-soft"
             >Видалити</button>
             <button
               onClick={() => {
-                if (!selectedSkill) return;
-                const name = viewName.trim();
-                if (!name) return;
-                updateSkill({ ...selectedSkill, name, description: viewDescription.trim() });
-                setViewOpen(false);
+                if (!viewSkill) return;
+                if (!validateViewForm()) return;
+                const name = viewValues.name.trim();
+                updateSkill({ ...viewSkill, name, description: viewValues.description.trim() });
+                closeViewModal();
+                setViewModalData(() => null);
               }}
-              style={{ padding: '8px 14px', borderRadius: 10, border: '1px solid var(--accent-soft-border)', background: 'var(--accent-soft-bg)', color: 'var(--fg)', fontWeight: 600 }}
+              className="btn-primary"
             >Зберегти</button>
           </div>
         ) : undefined}
       >
-        {selectedSkill && (
-          <div style={{ display: 'grid', gap: 12 }}>
-            <label style={{ display: 'grid', gap: 6 }}>
-              <span style={{ fontSize: 12, color: 'var(--muted)' }}>Назва</span>
-              <input value={viewName} onChange={e => setViewName(e.target.value)} style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)' }} />
+        {viewSkill && (
+          <div className="skills-modal-grid">
+            <label className="labeled-field">
+              <span className="text-xs text-muted">Назва</span>
+              <input {...registerViewField('name')} className="input-control" />
+              {viewErrors.name && <span className="text-xs text-muted" style={{ color: 'var(--danger)' }}>{viewErrors.name}</span>}
             </label>
-            <label style={{ display: 'grid', gap: 6 }}>
-              <span style={{ fontSize: 12, color: 'var(--muted)' }}>Опис</span>
-              <textarea value={viewDescription} onChange={e => setViewDescription(e.target.value)} rows={4} style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)', resize: 'vertical' }} />
+            <label className="labeled-field">
+              <span className="text-xs text-muted">Опис</span>
+              <textarea {...registerViewField('description')} rows={4} className="textarea-control" />
             </label>
             {selectedSkillStats && (
-              <div style={{ display: 'grid', gap: 14 }}>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <div style={{ flex: '1 1 200px', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)' }}>
-                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>Бійців володіє</div>
-                    <div style={{ fontSize: 20, fontWeight: 700 }}>{selectedSkillStats.count}</div>
+              <div className="modal-stack">
+                <div className="skills-stats-cards">
+                  <div className="skills-stats-card">
+                    <div className="text-xs text-muted">Бійців володіє</div>
+                    <div className="text-lg text-strong">{selectedSkillStats.count}</div>
                   </div>
-                  <div style={{ flex: '1 1 200px', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)' }}>
-                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>Середній рівень</div>
-                    <div style={{ fontSize: 20, fontWeight: 700 }}>{selectedSkillStats.average}</div>
+                  <div className="skills-stats-card">
+                    <div className="text-xs text-muted">Середній рівень</div>
+                    <div className="text-lg text-strong">{selectedSkillStats.average}</div>
                   </div>
                 </div>
                 <div>
-                  <strong style={{ fontSize: 14 }}>Розподіл за підрозділами</strong>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-                    {Object.entries(selectedSkillStats.byUnit).map(([unit, count]) => (
-                      <span key={unit} style={{ padding: '4px 10px', borderRadius: 999, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel-alt)', fontSize: 12 }}>{unit}: {count}</span>
+                  <strong className="section-title">Розподіл за підрозділами</strong>
+                  <div className="skills-distribution">
+                    {(Object.entries(selectedSkillStats.byUnit) as Array<[string, number]>).map(([unit, count]) => (
+                      <span key={unit} className="chip">{unit}: {count}</span>
                     ))}
-                    {Object.keys(selectedSkillStats.byUnit).length === 0 && <span style={{ fontSize: 12, color: 'var(--muted)' }}>Поки що немає даних</span>}
+                    {Object.keys(selectedSkillStats.byUnit).length === 0 && <span className="text-xs text-muted">Поки що немає даних</span>}
                   </div>
                 </div>
                 <div>
-                  <strong style={{ fontSize: 14 }}>Бійці</strong>
+                  <strong className="section-title">Бійці</strong>
                   {selectedSkillStats.fighters.length === 0 ? (
-                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>Ніхто не володіє цією навичкою.</div>
+                    <div className="text-xs text-muted" style={{ marginTop: 6 }}>Ніхто не володіє цією навичкою.</div>
                   ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 6, fontSize: 12 }}>
+                    <table className="table-muted">
                       <thead>
-                        <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
-                          <th style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-subtle)' }}>Боєць</th>
-                          <th style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-subtle)' }}>Підрозділ</th>
-                          <th style={{ padding: '6px 8px', borderBottom: '1px солід var(--border-subtle)' }}>Рівень</th>
+                        <tr>
+                          <th>Боєць</th>
+                          <th>Підрозділ</th>
+                          <th>Рівень</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedSkillStats.fighters.map(({ fighter, level }) => (
+                        {selectedSkillStats.fighters.map(({ fighter, level }: { fighter: Fighter; level: number }) => (
                           <tr key={fighter.id}>
-                            <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-subtle)' }}>{fighter.callsign || fighter.name}</td>
-                            <td style={{ padding: '6px 8px', borderBottom: '1px solid var(--border-subtle)' }}>{fighter.unit || '—'}</td>
-                            <td style={{ padding: '6px 8px', borderBottom: '1px солід var(--border-subtle)' }}>lvl {level}</td>
+                            <td>{fighter.callsign || fighter.name}</td>
+                            <td>{fighter.unit || '—'}</td>
+                            <td>lvl {level}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -393,12 +357,12 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
       </Modal>
 
       <Modal open={catEditOpen} onClose={() => setCatEditOpen(false)} title={editingCategory ? 'Редагувати категорію' : 'Нова категорія'} width={500}>
-        <div style={{ display: 'grid', gap: 12 }}>
-          <label style={{ display: 'grid', gap: 6 }}>
+        <div className="skills-modal-grid">
+          <label className="labeled-field">
             <span>Назва категорії</span>
-            <input value={catEditName} onChange={e => setCatEditName(e.target.value)} style={{ padding: 8, borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)' }} />
+            <input value={catEditName} onChange={e => setCatEditName(e.target.value)} className="input-control" />
           </label>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+          <div className="skills-modal-footer">
             {editingCategory && (
               <button
                 onClick={() => {
@@ -407,11 +371,11 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
                     setCatEditOpen(false);
                   }
                 }}
-                style={{ padding: '6px 10px', background: 'var(--danger-soft-bg)', border: '1px solid var(--danger-soft-border)', borderRadius: 6, color: 'var(--fg)' }}
+                className="btn-danger-soft"
               >Видалити категорію</button>
             )}
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-              <button onClick={() => setCatEditOpen(false)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel-alt)', color: 'var(--fg)' }}>Скасувати</button>
+            <div className="danger-actions">
+              <button onClick={() => setCatEditOpen(false)} className="btn-panel">Скасувати</button>
               <button
                 onClick={() => {
                   const name = catEditName.trim();
@@ -423,7 +387,7 @@ export default function Skills({ categories, fighters, fighterSkillLevels, addSk
                   }
                   setCatEditOpen(false);
                 }}
-                style={{ padding: '6px 10px', background: 'var(--success-soft-bg)', border: '1px solid var(--success-soft-border)', borderRadius: 6, color: 'var(--fg)' }}
+                className="btn-primary-soft"
               >Зберегти</button>
             </div>
           </div>

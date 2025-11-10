@@ -13,12 +13,14 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
+      "@/*": ["src/*"],
       "@/components/*": ["src/components/*"],
       "@/types": ["src/types"],
       "@/seed": ["src/seed"],
       "@/storage": ["src/storage"],
       "@/state": ["src/state"],
-      "@/utils": ["src/utils"]
+      "@/utils": ["src/utils"],
+      "@/hooks/*": ["src/hooks/*"]
     }
   },
   "include": ["src"]

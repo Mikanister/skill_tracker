@@ -5,7 +5,6 @@ import { SkillList } from '@/components/SkillList';
 import { useSkillRpgState } from '@/state';
 import { getCategoryProgress } from '@/utils';
 import { FighterManager } from '@/components/FighterManager';
-import { TaskBoard } from '@/components/TaskBoard';
 import { Modal } from '@/components/Modal';
 import { FighterSkills } from '@/types';
 
@@ -21,8 +20,7 @@ export default function App() {
     addFighter,
     selectedFighterId,
     setSelectedFighterId,
-    tasks,
-    setTasks,
+    setTasksV2,
     setXpLedger,
     fighterSkills,
     setFighterSkills,
@@ -43,7 +41,7 @@ export default function App() {
   const [theme, setTheme] = React.useState<string>(() => localStorage.getItem('skillrpg_theme') || 'light');
   const [search, setSearch] = React.useState('');
   const [showArchived, setShowArchived] = React.useState(false);
-  const [topView, setTopView] = React.useState<'skills'|'tasks'|'fighters'>('skills');
+  const [topView, setTopView] = React.useState<'skills'|'fighters'>('skills');
   const [helpOpen, setHelpOpen] = React.useState<boolean>(false);
 
   React.useEffect(() => {
@@ -58,7 +56,6 @@ export default function App() {
         <span style={{ color: '#666' }}>Локальний трекер навичок</span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setTopView('skills')} style={{ padding: '6px 10px', fontWeight: topView==='skills'?'700':'400' }}>Навички</button>
-          <button onClick={() => setTopView('tasks')} style={{ padding: '6px 10px', fontWeight: topView==='tasks'?'700':'400' }}>Задачі</button>
           <button onClick={() => setTopView('fighters')} style={{ padding: '6px 10px', fontWeight: topView==='fighters'?'700':'400' }}>Бійці</button>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
@@ -118,7 +115,7 @@ export default function App() {
               } catch {}
               setFighters([]);
               setSelectedFighterId(null);
-              setTasks([]);
+              setTasksV2([]);
               setXpLedger({});
               setFighterSkills({});
               setFighterSkillLevels({});
@@ -263,50 +260,6 @@ export default function App() {
                   ...prev,
                   [fighterId]: { ...(prev[fighterId] ?? {}), [skillId]: level }
                 }))}
-            />
-          </section>
-        )}
-        {topView==='tasks' && (
-          <section>
-            <TaskBoard
-              fighters={fighters}
-              selectedFighterId={selectedFighterId}
-              onSelectFighter={setSelectedFighterId}
-              categories={tree.categories}
-              tasks={tasks}
-              fighterSkills={fighterSkills}
-              onCreateTask={({ title, description, difficulty, links }) => {
-                if (!selectedFighterId) return;
-                const relatedSkills = links.map(l => ({ skillId: l.skillId, categoryId: l.categoryId }));
-                const suggestedXp: Record<string, number> = {};
-                for (const l of links) suggestedXp[l.skillId] = l.xp;
-                const t = {
-                  id: `${Date.now()}`,
-                  title,
-                  description,
-                  difficulty,
-                  relatedSkills,
-                  suggestedXp,
-                  assignedTo: selectedFighterId,
-                  status: 'todo' as const,
-                  createdAt: Date.now()
-                };
-                setTasks(prev => [t, ...prev]);
-              }}
-              onUpdateStatus={(taskId, status) => setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status } : t))}
-              onApproveTask={(taskId, approvedXp) => {
-                setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: 'done', approvedAt: Date.now(), approvedXp } : t));
-                const task = tasks.find(t => t.id === taskId);
-                const fid = task?.assignedTo;
-                if (!fid) return;
-                setXpLedger(prev => {
-                  const ledger = { ...(prev[fid] ?? {}) } as any;
-                  for (const [skillId, xp] of Object.entries(approvedXp)) {
-                    ledger[skillId] = (ledger[skillId] ?? 0) + xp;
-                  }
-                  return { ...prev, [fid]: ledger };
-                });
-              }}
             />
           </section>
         )}

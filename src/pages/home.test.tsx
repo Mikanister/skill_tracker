@@ -54,10 +54,10 @@ describe('Home', () => {
     />);
 
     expect(screen.queryByText('Поки що немає задач')).toBeNull();
-    expect(screen.getByText('To Do')).toBeTruthy();
-    expect(screen.getByText('In Progress')).toBeTruthy();
-    expect(screen.getByText('Validation')).toBeTruthy();
-    expect(screen.getByText('Done')).toBeTruthy();
+    expect(screen.getByText('To Do', { selector: '.board-column-title' })).toBeInTheDocument();
+    expect(screen.getByText('In Progress', { selector: '.board-column-title' })).toBeInTheDocument();
+    expect(screen.getByText('Validation', { selector: '.board-column-title' })).toBeInTheDocument();
+    expect(screen.getByText('Done', { selector: '.board-column-title' })).toBeInTheDocument();
 
     expect(screen.getByText('Task todo')).toBeTruthy();
     expect(screen.getByText('Task progress')).toBeTruthy();

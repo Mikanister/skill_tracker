@@ -4,7 +4,7 @@ import path from 'path';
 export default defineConfig({
   test: {
     environment: 'jsdom',
-    setupFiles: [],
+    setupFiles: ['src/test/setup.ts'],
     coverage: {
       provider: 'v8'
     }

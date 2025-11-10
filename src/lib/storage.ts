@@ -18,20 +18,18 @@ export function safeSetItem(key: string, value: any): boolean {
   }
 }
 
-export function safeGetItem<T>(key: string, defaultValue: T, validator?: (data: any) => boolean): T {
+export function safeGetItem<T>(key: string, defaultValue: T, parser?: (data: unknown) => T): T {
   try {
     const item = localStorage.getItem(key);
     if (!item) return defaultValue;
     
     const parsed = JSON.parse(item);
     
-    // Optional validation
-    if (validator && !validator(parsed)) {
-      console.warn(`Invalid data in localStorage for key: ${key}`);
-      return defaultValue;
+    if (parser) {
+      return parser(parsed);
     }
     
-    return parsed;
+    return parsed as T;
   } catch (error) {
     console.error(`Failed to load from localStorage (key: ${key}):`, error);
     return defaultValue;
@@ -54,31 +52,3 @@ export function generateId(prefix?: string): string {
   const random = Math.random().toString(36).substring(2, 11);
   return prefix ? `${prefix}_${timestamp}_${random}` : `${timestamp}_${random}`;
 }
-
-/**
- * Validators for data types
- */
-export const validators = {
-  isFightersArray: (data: any): boolean => {
-    return Array.isArray(data) && data.every(f => 
-      typeof f === 'object' && 
-      typeof f.id === 'string' && 
-      typeof f.name === 'string'
-    );
-  },
-  
-  isTasksV2Array: (data: any): boolean => {
-    return Array.isArray(data) && data.every(t =>
-      typeof t === 'object' &&
-      typeof t.id === 'string' &&
-      typeof t.title === 'string' &&
-      Array.isArray(t.assignees)
-    );
-  },
-  
-  isSkillTree: (data: any): boolean => {
-    return data != null && typeof data === 'object' &&
-      Array.isArray(data.categories) &&
-      typeof data.version === 'number';
-  }
-};

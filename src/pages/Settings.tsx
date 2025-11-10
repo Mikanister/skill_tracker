@@ -1,6 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { SkillTree, Fighter, FighterSkillLevels, FighterXpLedger, TaskV2 } from '@/types';
 import { downloadJSON, downloadCSV, importFromJSON } from '../lib/export';
+import { useFormState } from '@/hooks/useFormState';
 
 type ToastApi = {
   success: (msg: string) => void;
@@ -36,7 +37,18 @@ export default function Settings({
   toast
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [confirmValue, setConfirmValue] = useState('');
+
+  const {
+    values: dangerValues,
+    registerField: registerDangerField,
+    setValue: setDangerValue,
+    reset: resetDangerForm,
+    validate: validateDangerForm,
+    errors: dangerErrors,
+    clearErrors: clearDangerErrors
+  } = useFormState({ confirmation: '' }, {
+    confirmation: value => (value === 'DELETE' ? null : 'Для підтвердження введіть DELETE')
+  });
 
   const handleExportJSON = () => {
     downloadJSON(
@@ -89,24 +101,29 @@ export default function Settings({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleResetConfirm = () => {
+    clearDangerErrors();
+    setDangerValue('confirmation', '');
+  };
+
   return (
-    <div style={{ padding: 32, maxWidth: 840, display: 'grid', gap: 26 }}>
-      <header>
-        <h2 style={{ margin: 0, fontSize: 30 }}>Налаштування</h2>
-        <p style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--muted)' }}>Резервні копії, імпорт та управління даними</p>
+    <div className="settings-container">
+      <header className="page-header">
+        <h2 className="page-title">Налаштування</h2>
+        <p className="page-subtitle">Резервні копії, імпорт та управління даними</p>
       </header>
 
-      <section style={{ borderRadius: 18, border: '1px solid var(--border-subtle)', background: 'var(--surface-card)', padding: 24, boxShadow: 'var(--shadow-lg)', display: 'grid', gap: 18 }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: 18 }}>Експорт/Імпорт</h3>
-          <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--muted)' }}>Збережіть резервну копію або імпортуйте поточні дані.</p>
+      <section className="section-card">
+        <div className="section-heading">
+          <h3 className="text-md text-strong">Експорт/Імпорт</h3>
+          <p className="text-sm text-muted">Збережіть резервну копію або імпортуйте поточні дані.</p>
         </div>
-        <div style={{ display: 'grid', gap: 14 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            <button onClick={handleExportJSON} style={{ padding: '12px 18px', borderRadius: 14, background: 'var(--accent-soft-bg)', border: '1px solid var(--accent-soft-border)', color: 'var(--fg)', fontWeight: 600, letterSpacing: '0.01em', boxShadow: 'var(--shadow-sm)' }}>
+        <div className="action-grid">
+          <div className="button-group">
+            <button onClick={handleExportJSON} className="btn-primary">
               📥 Експорт JSON
             </button>
-            <button onClick={handleExportCSV} style={{ padding: '12px 18px', borderRadius: 14, background: 'var(--surface-panel-alt)', border: '1px solid var(--border-subtle)', color: 'var(--fg)', fontWeight: 600, boxShadow: 'var(--shadow-sm)' }}>
+            <button onClick={handleExportCSV} className="btn-secondary">
               📊 Експорт CSV (бійці)
             </button>
           </div>
@@ -119,8 +136,8 @@ export default function Settings({
               style={{ display: 'none' }}
               id="import-file"
             />
-            <label htmlFor="import-file">
-              <button onClick={() => fileInputRef.current?.click()} style={{ padding: '12px 18px', borderRadius: 14, background: 'var(--success-soft-bg)', border: '1px solid var(--success-soft-border)', color: 'var(--fg)', fontWeight: 600, boxShadow: 'var(--shadow-sm)' }}>
+            <label htmlFor="import-file" className="file-trigger">
+              <button onClick={() => fileInputRef.current?.click()} className="btn-success-soft">
                 📤 Імпорт JSON
               </button>
             </label>
@@ -128,12 +145,12 @@ export default function Settings({
         </div>
       </section>
 
-      <section style={{ borderRadius: 18, border: '1px solid var(--border-subtle)', padding: 24, background: 'var(--surface-card)', display: 'grid', gap: 16, boxShadow: 'var(--shadow-md)' }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: 18 }}>Статистика</h3>
-          <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--muted)' }}>Огляд поточного стану бази навичок.</p>
+      <section className="section-card">
+        <div className="section-heading">
+          <h3 className="text-md text-strong">Статистика</h3>
+          <p className="text-sm text-muted">Огляд поточного стану бази навичок.</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+        <div className="stat-grid">
           <StatCard label="Бійців" value={fighters.length} accent="teal" />
           <StatCard label="Категорій" value={tree.categories.length} accent="blue" />
           <StatCard label="Навичок" value={tree.categories.reduce((sum, c) => sum + c.skills.length, 0)} accent="violet" />
@@ -141,41 +158,50 @@ export default function Settings({
         </div>
       </section>
 
-      <section style={{ borderRadius: 18, border: '1px solid var(--danger-soft-border)', padding: 24, background: 'var(--surface-danger-soft)', boxShadow: 'var(--shadow-md)', display: 'grid', gap: 16 }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: 18 }}>Небезпечна зона</h3>
-          <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--muted)' }}>Скидання видалить всі дані без можливості відновлення.</p>
+      <section className="section-card section-card--danger">
+        <div className="section-heading">
+          <h3 className="text-md text-strong">Небезпечна зона</h3>
+          <p className="text-sm text-muted">Скидання видалить всі дані без можливості відновлення.</p>
         </div>
-        <div style={{ borderRadius: 14, border: '1px solid var(--danger-soft-border)', padding: 16, background: 'rgba(239,68,68,0.08)', display: 'grid', gap: 10 }}>
-          <strong style={{ fontSize: 14 }}>Що буде видалено:</strong>
-          <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: 'var(--muted)' }}>
+        <div className="danger-panel">
+          <strong className="text-sm text-strong">Що буде видалено:</strong>
+          <ul className="list-muted">
             <li>Усі профілі бійців та їхній прогрес</li>
             <li>Каталог навичок і категорії</li>
             <li>Журнал задач і коментарі</li>
             <li>Налаштування та історія імпортів</li>
           </ul>
-          <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div className="danger-hint">
             <span>Бажано зберегти резервну копію перед очисткою.</span>
-            <button onClick={handleExportJSON} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--accent-soft-border)', background: 'var(--surface-panel)', color: 'var(--fg)', fontSize: 12 }}>Експортувати зараз</button>
+            <button onClick={handleExportJSON} className="btn-secondary">Експортувати зараз</button>
           </div>
         </div>
-        <label style={{ display: 'grid', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
+        <label className="labeled-field text-xs text-muted">
           <span>Для підтвердження введіть <strong>DELETE</strong>:</span>
-          <input value={confirmValue} onChange={e => setConfirmValue(e.target.value)} placeholder="Введіть DELETE" style={{ padding: 10, borderRadius: 10, border: '1px solid var(--danger-soft-border)', background: 'var(--surface-panel)', color: 'var(--fg)' }} />
+          <input {...registerDangerField('confirmation')} placeholder="Введіть DELETE" className="confirm-input" />
+          {dangerErrors.confirmation && (
+            <span className="text-xs" style={{ color: 'var(--danger)' }}>{dangerErrors.confirmation}</span>
+          )}
         </label>
         <button
           onClick={() => {
-            if (confirmValue !== 'DELETE') {
+            if (!validateDangerForm()) {
               toast.error('Для підтвердження введіть DELETE');
               return;
             }
             if (confirm('Видалити ВСІ дані? Це неможливо відмінити!')) {
               onReset();
               toast.info('Дані скинуті');
+              resetDangerForm({ confirmation: '' });
             }
           }}
-          style={{ padding: '12px 18px', borderRadius: 14, background: confirmValue === 'DELETE' ? 'var(--danger-soft-bg)' : 'rgba(239,68,68,0.2)', border: '1px solid var(--danger-soft-border)', color: 'var(--fg)', fontWeight: 600, boxShadow: 'var(--shadow-sm)', cursor: confirmValue === 'DELETE' ? 'pointer' : 'not-allowed', opacity: confirmValue === 'DELETE' ? 1 : 0.6 }}
-          disabled={confirmValue !== 'DELETE'}
+          className="btn-danger-strong"
+          data-active={dangerValues.confirmation === 'DELETE'}
+          style={{
+            background: dangerValues.confirmation === 'DELETE' ? 'var(--danger-soft-bg)' : 'rgba(239,68,68,0.2)',
+            cursor: dangerValues.confirmation === 'DELETE' ? 'pointer' : 'not-allowed'
+          }}
+          disabled={dangerValues.confirmation !== 'DELETE'}
         >
           🗑️ Скинути всі дані
         </button>
@@ -190,34 +216,14 @@ type StatCardProps = {
   accent: 'teal' | 'blue' | 'violet' | 'amber';
 };
 
-const accents: Record<StatCardProps['accent'], { fill: string; glow: string }> = {
-  teal: {
-    fill: 'linear-gradient(135deg, rgba(20,184,166,0.68) 0%, rgba(13,148,136,0.62) 100%)',
-    glow: '0 10px 25px rgba(13,148,136,0.35)'
-  },
-  blue: {
-    fill: 'linear-gradient(135deg, rgba(59,130,246,0.68) 0%, rgba(37,99,235,0.62) 100%)',
-    glow: '0 10px 25px rgba(37,99,235,0.35)'
-  },
-  violet: {
-    fill: 'linear-gradient(135deg, rgba(139,92,246,0.68) 0%, rgba(124,58,237,0.62) 100%)',
-    glow: '0 10px 25px rgba(124,58,237,0.35)'
-  },
-  amber: {
-    fill: 'linear-gradient(135deg, rgba(251,191,36,0.72) 0%, rgba(245,158,11,0.6) 100%)',
-    glow: '0 10px 28px rgba(245,158,11,0.32)'
-  }
-};
-
 function StatCard({ label, value, accent }: StatCardProps) {
-  const palette = accents[accent];
   return (
-    <div style={{ borderRadius: 16, padding: 18, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel-alt)', display: 'grid', gap: 6, boxShadow: 'var(--shadow-sm)' }}>
-      <span style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <strong style={{ fontSize: 26 }}>{value}</strong>
-        <div style={{ flex: 1, height: 6, borderRadius: 999, background: 'var(--stat-progress-track)', overflow: 'hidden', boxShadow: palette.glow }}>
-          <div style={{ width: '100%', height: '100%', background: palette.fill }} />
+    <div className={`stat-card stat-card--${accent}`}>
+      <span className="stat-card__label">{label}</span>
+      <div className="stat-card__row">
+        <strong className="stat-card__value">{value}</strong>
+        <div className="stat-card__bar">
+          <div className="stat-card__bar-fill" />
         </div>
       </div>
     </div>

@@ -46,7 +46,6 @@ describe('Skills page', () => {
         categories={categories}
         fighters={fighters as any}
         fighterSkillLevels={fighterSkillLevels}
-        xpLedger={{}}
         {...baseActions}
       />
     );
@@ -78,7 +77,6 @@ describe('Skills page', () => {
         categories={categories}
         fighters={[] as any}
         fighterSkillLevels={{}}
-        xpLedger={{}}
         {...baseActions}
       />
     );

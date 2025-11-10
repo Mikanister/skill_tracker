@@ -17,7 +17,8 @@ const categories = [
 
 const baseProps = {
   addFighter: () => {},
-  deleteFighter: () => {}
+  deleteFighter: () => {},
+  tasks: [] as any
 };
 
 describe('Fighters page', () => {
@@ -33,11 +34,11 @@ describe('Fighters page', () => {
 
     render(
       <Fighters
+        {...baseProps}
         fighters={fighters as any}
         categories={categories}
         fighterSkillLevels={fighterSkillLevels}
         xpLedger={{ f1: {}, f2: {} }}
-        {...baseProps}
       />
     );
 
@@ -60,12 +61,12 @@ describe('Fighters page', () => {
 
     render(
       <Fighters
+        {...baseProps}
         fighters={fighters as any}
         categories={categories}
         fighterSkillLevels={fighterSkillLevels}
         xpLedger={{ f1: {} }}
         tasks={tasks as any}
-        {...baseProps}
       />
     );
 

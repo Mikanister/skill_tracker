@@ -4,6 +4,8 @@ import { Modal } from '@/components/Modal';
 import { EmptyState } from '@/components/EmptyState';
 import { SkillProgress } from '@/components/SkillProgress';
 import { SegmentedLevelInput } from '@/components/SegmentedLevelInput';
+import { useModalState } from '@/hooks/useModalState';
+import { useFormState } from '@/hooks/useFormState';
 
 type LevelValue = 0|1|2|3|4|5|6|7|8|9|10;
 
@@ -437,19 +439,26 @@ export default function Fighters({ fighters, categories, fighterSkillLevels, xpL
                     <button onClick={() => setCollapsed(prev => ({ ...prev, ['modal_'+cat.id]: !prev['modal_'+cat.id] }))} style={{ padding: '6px 10px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel-alt)', color: 'var(--fg)', fontSize: 12 }}>{collapsed['modal_'+cat.id] ? 'Розгорнути' : 'Згорнути'}</button>
                   </div>
                   {!collapsed['modal_'+cat.id] && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-                      {list.map(s => (
-                        <React.Fragment key={s.id}>
-                          <div key={s.id + '-lbl'} style={{ display: 'flex', alignItems: 'center', fontSize: 13 }}>{s.name}</div>
-                          <div key={s.id + '-seg'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                            <SegmentedLevelInput
-                              value={(levels[s.id] ?? 0) as 0|1|2|3|4|5|6|7|8|9|10}
-                              onChange={next => setLevels(prev => ({ ...prev, [s.id]: next }))}
-                              size="sm"
-                            />
-                          </div>
-                        </React.Fragment>
-                      ))}
+                    <div className="skill-level-grid">
+                      {list.map((s, index) => {
+                        const currentLevel = (levels[s.id] ?? 0) as 0|1|2|3|4|5|6|7|8|9|10;
+                        const accentCycle: Array<'blue' | 'teal' | 'violet'> = ['blue', 'teal', 'violet'];
+                        const accent = accentCycle[(index + 1) % accentCycle.length];
+                        return (
+                          <React.Fragment key={s.id}>
+                            <div className="skill-level-label">{s.name}</div>
+                            <div className="skill-level-control">
+                              <SegmentedLevelInput
+                                value={currentLevel}
+                                onChange={next => setLevels(prev => ({ ...prev, [s.id]: Math.min(next, 10) as 0|1|2|3|4|5|6|7|8|9|10 }))}
+                                size="sm"
+                                accent={accent}
+                                maxLevel={10 as 0|1|2|3|4|5|6|7|8|9|10}
+                              />
+                            </div>
+                          </React.Fragment>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -461,16 +470,16 @@ export default function Fighters({ fighters, categories, fighterSkillLevels, xpL
 
       <Modal open={profileOpen && !!selectedFighter} onClose={() => setProfileOpen(false)} title={`Профіль: ${selectedFighter?.callsign || selectedFighter?.name || ''}`} width={960}>
         {selectedFighter && (
-          <div style={{ display: 'grid', gap: 18 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
-              <div style={{ display: 'inline-flex', gap: 8 }}>
+          <div className="stack gap-18">
+            <div className="fighter-profile-toolbar">
+              <div className="fighter-profile-nav">
                 <button
                   onClick={() => {
                     const idx = fighters.findIndex(f => f.id === selectedFighter.id);
                     const prevIdx = (idx - 1 + fighters.length) % fighters.length;
                     setSelectedFighterId(fighters[prevIdx]?.id ?? selectedFighter.id);
                   }}
-                  style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)', fontSize: 12 }}
+                  className="btn-panel"
                 >← Попередній</button>
                 <button
                   onClick={() => {
@@ -478,64 +487,64 @@ export default function Fighters({ fighters, categories, fighterSkillLevels, xpL
                     const nextIdx = (idx + 1) % fighters.length;
                     setSelectedFighterId(fighters[nextIdx]?.id ?? selectedFighter.id);
                   }}
-                  style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)', fontSize: 12 }}
+                  className="btn-panel"
                 >Наступний →</button>
               </div>
               <input
                 placeholder="Пошук скіла"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={{ flex: '1 1 260px', minWidth: 220, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)' }}
+                className="input-pill input-pill--fluid"
               />
               <button
                 onClick={() => { if (selectedFighter && confirm(`Видалити бійця «${selectedFighter.callsign || selectedFighter.name}»?`)) { deleteFighter(selectedFighter.id); setProfileOpen(false); } }}
-                style={{ padding: '8px 12px', borderRadius: 12, background: 'var(--danger-soft-bg)', border: '1px solid var(--danger-soft-border)', color: 'var(--fg)', fontWeight: 600 }}
+                className="btn-danger-soft"
               >Видалити</button>
             </div>
 
-            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-              <div style={{ borderRadius: 14, border: '1px solid var(--border-subtle)', padding: 16, background: 'var(--surface-card)', display: 'grid', gap: 6 }}>
-                <strong style={{ fontSize: 14 }}>Загальна інформація</strong>
-                <span style={{ fontSize: 13, color: 'var(--muted)' }}>ПІБ:</span>
-                <span style={{ fontSize: 15, fontWeight: 600 }}>{selectedFighter.fullName || selectedFighter.name}</span>
+            <div className="fighter-summary-grid">
+              <div className="surface-card-block surface-card-block--tight">
+                <strong className="section-title">Загальна інформація</strong>
+                <span className="text-sm text-muted">ПІБ:</span>
+                <span className="text-md text-strong">{selectedFighter.fullName || selectedFighter.name}</span>
                 {(selectedFighter.rank || selectedFighter.position) && (
-                  <span style={{ fontSize: 13, color: 'var(--muted)' }}>
+                  <span className="text-sm text-muted">
                     {[selectedFighter.rank, selectedFighter.position].filter(Boolean).join(' • ')}
                   </span>
                 )}
-                {selectedFighter.unit && <span style={{ fontSize: 13, color: 'var(--muted)' }}>Підрозділ: {selectedFighter.unit}</span>}
+                {selectedFighter.unit && <span className="text-sm text-muted">Підрозділ: {selectedFighter.unit}</span>}
                 {selectedFighter.notes && (
-                  <div style={{ fontSize: 12, lineHeight: 1.4, color: 'var(--muted)' }}>
-                    <span style={{ fontWeight: 600, color: 'var(--fg)' }}>Нотатки:</span>
+                  <div className="text-xs text-muted" style={{ lineHeight: 1.4 }}>
+                    <span className="text-strong">Нотатки:</span>
                     <div>{selectedFighter.notes}</div>
                   </div>
                 )}
               </div>
-              <div style={{ borderRadius: 14, border: '1px solid var(--border-subtle)', padding: 16, background: 'var(--surface-card)', display: 'grid', gap: 8 }}>
-                <strong style={{ fontSize: 14 }}>Зведення</strong>
-                <span style={{ fontSize: 13, color: 'var(--muted)' }}>Активні скіли: <strong style={{ color: 'var(--fg)' }}>{activeSkillCount}</strong></span>
-                <span style={{ fontSize: 13, color: 'var(--muted)' }}>Накопичено XP: <strong style={{ color: 'var(--fg)' }}>{totalXp}</strong></span>
-                <div style={{ display: 'grid', gap: 6 }}>
+              <div className="surface-card-block">
+                <strong className="section-title">Зведення</strong>
+                <span className="text-sm text-muted">Активні скіли: <strong className="text-strong">{activeSkillCount}</strong></span>
+                <span className="text-sm text-muted">Накопичено XP: <strong className="text-strong">{totalXp}</strong></span>
+                <div className="stack gap-6">
                   {(['todo','in_progress','validation','done','archived'] as TaskV2Status[]).map(status => (
-                    <div key={status} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--muted)' }}>
+                    <div key={status} className="row-between text-xs text-muted">
                       <span>{TASK_STATUS_LABELS[status]}</span>
-                      <strong style={{ color: 'var(--fg)' }}>{taskStatusSummary[status] ?? 0}</strong>
+                      <strong className="text-strong">{taskStatusSummary[status] ?? 0}</strong>
                     </div>
                   ))}
                 </div>
               </div>
-              <div style={{ borderRadius: 14, border: '1px solid var(--border-subtle)', padding: 16, background: 'var(--surface-card)', display: 'grid', gap: 8 }}>
-                <strong style={{ fontSize: 14 }}>Останні задачі</strong>
+              <div className="surface-card-block">
+                <strong className="section-title">Останні задачі</strong>
                 {recentTasks.length === 0 ? (
-                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>Немає історії задач.</span>
+                  <span className="text-xs text-muted">Немає історії задач.</span>
                 ) : (
                   recentTasks.map(task => (
-                    <div key={task.id} style={{ display: 'grid', gap: 2, border: '1px solid var(--border-subtle)', borderRadius: 10, padding: 8, background: 'var(--surface-panel)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                        <span style={{ fontWeight: 600, color: 'var(--fg)' }}>#{task.taskNumber ?? '—'} · {task.title}</span>
-                        <span style={{ color: 'var(--muted)' }}>{TASK_STATUS_LABELS[task.status]}</span>
+                    <div key={task.id} className="task-history-item">
+                      <div className="row-between text-xs">
+                        <span className="text-strong">#{task.taskNumber ?? '—'} · {task.title}</span>
+                        <span className="text-muted">{TASK_STATUS_LABELS[task.status]}</span>
                       </div>
-                      <span style={{ fontSize: 11, color: 'var(--muted)' }}>{formatDateTime(task.approvedAt ?? task.submittedAt ?? task.createdAt)}</span>
+                      <span className="text-xs text-muted">{formatDateTime(task.approvedAt ?? task.submittedAt ?? task.createdAt)}</span>
                     </div>
                   ))
                 )}
@@ -543,18 +552,18 @@ export default function Fighters({ fighters, categories, fighterSkillLevels, xpL
             </div>
 
             {filteredCategories.map((cat, catIndex) => (
-              <div key={cat.id} style={{ border: '1px solid var(--border-subtle)', borderRadius: 14, padding: 14, background: 'var(--surface-panel)', display: 'grid', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <strong style={{ flex: 1, fontSize: 15 }}>{cat.name}</strong>
+              <div key={cat.id} className="surface-panel-block">
+                <div className="flex-row align-center gap-8">
+                  <strong className="text-md text-strong">{cat.name}</strong>
                   <button
                     onClick={() => setCollapsed(prev => ({ ...prev, [cat.id]: !(prev[cat.id] ?? true) }))}
-                    style={{ padding: '6px 10px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel-alt)', color: 'var(--fg)', fontSize: 12 }}
+                    className="btn-panel btn-panel--alt"
                   >
                     {(collapsed[cat.id] ?? true) ? 'Розгорнути' : 'Згорнути'}
                   </button>
                 </div>
                 {!((collapsed[cat.id] ?? true)) && (
-                  <div style={{ display: 'grid', gap: 12, marginTop: 4 }}>
+                  <div className="stack gap-12 mt-1">
                     {cat.skills.map((s, skillIndex) => {
                       const level = (fighterSkillLevels[selectedFighter.id]?.[s.id] ?? 0) as 0|1|2|3|4|5|6|7|8|9|10;
                       const xp = (xpLedger[selectedFighter.id]?.[s.id] ?? 0) as number;

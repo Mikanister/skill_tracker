@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { safeSetItem, safeGetItem, safeRemoveItem, generateId, validators } from './storage';
+import { safeSetItem, safeGetItem, safeRemoveItem, generateId } from './storage';
 
 describe('storage utilities', () => {
   beforeEach(() => {
@@ -27,15 +27,24 @@ describe('storage utilities', () => {
     expect(value).toBe(42);
   });
 
-  it('safeGetItem returns parsed value when validator passes', () => {
+  it('safeGetItem returns parsed value when parser succeeds', () => {
     localStorage.setItem('foo', JSON.stringify({ bar: 1 }));
-    const value = safeGetItem('foo', {}, data => 'bar' in data);
+    const value = safeGetItem('foo', {}, data => {
+      if (typeof data === 'object' && data !== null && 'bar' in data) return data as { bar: number };
+      return {};
+    });
     expect(value).toEqual({ bar: 1 });
   });
 
-  it('safeGetItem falls back when validator fails', () => {
+  it('safeGetItem falls back when parser returns default', () => {
     localStorage.setItem('foo', JSON.stringify({ bar: 1 }));
-    const value = safeGetItem('foo', { baz: 2 }, data => 'baz' in data);
+    const fallback = { baz: 2 };
+    const value = safeGetItem('foo', fallback, data => {
+      if (typeof data === 'object' && data !== null && 'baz' in data) {
+        return data as typeof fallback;
+      }
+      return fallback;
+    });
     expect(value).toEqual({ baz: 2 });
   });
 
@@ -57,14 +66,10 @@ describe('storage utilities', () => {
     expect(id.split('_')).toHaveLength(3);
   });
 
-  it('validators work as expected', () => {
-    expect(validators.isFightersArray([{ id: 'f1', name: 'Alpha' }])).toBe(true);
-    expect(validators.isFightersArray([{ id: 1 }])).toBe(false);
-
-    expect(validators.isTasksV2Array([{ id: 't1', title: 'Task', assignees: [] }])).toBe(true);
-    expect(validators.isTasksV2Array([{ id: 't1', title: 123, assignees: [] }])).toBe(false);
-
-    expect(validators.isSkillTree({ categories: [], version: 1 })).toBe(true);
-    expect(validators.isSkillTree(null)).toBe(false);
+  it('safeGetItem without parser returns parsed JSON', () => {
+    const payload = { foo: 'bar' };
+    localStorage.setItem('foo', JSON.stringify(payload));
+    const value = safeGetItem('foo', {} as { foo: string });
+    expect(value).toEqual(payload);
   });
 });
