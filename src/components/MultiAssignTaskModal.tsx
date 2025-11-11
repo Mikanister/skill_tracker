@@ -149,6 +149,7 @@ export default function MultiAssignTaskModal({ open, onClose, fighters, categori
                             <div className="multiassign-skill-title">
                               <input
                                 type="checkbox"
+                                aria-label={s.name}
                                 checked={checked}
                                 onChange={e => toggleSkill(f.id, s.id, e.target.checked)}
                               />

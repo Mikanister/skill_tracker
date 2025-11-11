@@ -1,6 +1,14 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Fighter, TaskComment, TaskStatusHistoryEntry, TaskV2, TaskV2Status } from '@/types';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fighter, TaskV2, TaskV2Status } from '@/types';
 import { Modal } from '@/components/Modal';
+import {
+  TaskViewModalHeader,
+  TaskViewModalFooter,
+  TaskDetailsSection,
+  TaskHistorySection,
+  TaskCommentSection
+} from '@/components/TaskBoard/TaskViewModalSections';
+import { buildTaskActivityEntries } from '@/components/TaskBoard/taskActivity';
 
 export type TaskViewModalProps = {
   task: TaskV2 | null;
@@ -105,16 +113,49 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
     );
   }, [task, trimmedTitle, trimmedDescription, priorityDraft, statusDraft]);
 
-  const activityEntries = useMemo(() => {
-    if (!task) return [] as ({ type: 'status'; entry: TaskStatusHistoryEntry } | { type: 'comment'; entry: TaskComment })[];
-    const statusEntries = (task.history ?? []).map(entry => ({ type: 'status' as const, entry }));
-    const commentEntries = (task.comments ?? []).map(entry => ({ type: 'comment' as const, entry }));
-    return [...statusEntries, ...commentEntries].sort((a, b) => {
-      const timeA = a.type === 'status' ? a.entry.changedAt : a.entry.createdAt;
-      const timeB = b.type === 'status' ? b.entry.changedAt : b.entry.createdAt;
-      return timeB - timeA;
+  const activityEntries = useMemo(() => buildTaskActivityEntries(task), [task]);
+
+  const handleStatusToggle = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setStatusMenuOpen(prev => !prev);
+  }, []);
+
+  const handleStatusSelect = useCallback((nextStatus: TaskV2Status, event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setStatusDraft(nextStatus);
+    setStatusMenuOpen(false);
+  }, []);
+
+  const handleSave = useCallback(() => {
+    if (!task || titleError) return;
+    const changeNotes: string[] = [];
+    if (trimmedTitle !== task.title.trim()) changeNotes.push('назву задачі');
+    if (trimmedDescription !== (task.description ?? '').trim()) changeNotes.push('опис задачі');
+    if (statusDraft !== task.status) changeNotes.push('статус задачі');
+    onSaveDetails(task.id, {
+      title: trimmedTitle,
+      description: trimmedDescription || undefined,
+      isPriority: priorityDraft,
+      changeNotes
     });
-  }, [task]);
+    if (statusDraft !== task.status) {
+      onStatusChange(task, statusDraft);
+    }
+  }, [task, titleError, trimmedTitle, trimmedDescription, statusDraft, priorityDraft, onSaveDetails, onStatusChange]);
+
+  const handleDelete = useCallback(() => {
+    if (!task) return;
+    if (!confirm(`Видалити задачу «${task.title}»?`)) return;
+    onDelete(task.id);
+  }, [task, onDelete]);
+
+  const handleCommentSubmit = useCallback(() => {
+    if (!task) return;
+    const trimmed = commentDraft.trim();
+    if (!trimmed) return;
+    onAddComment(task.id, trimmed);
+    setCommentDraft('');
+  }, [task, commentDraft, onAddComment, setCommentDraft]);
 
   if (!task) return null;
 
@@ -123,172 +164,54 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
       open={!!task}
       onClose={onClose}
       title={task ? (
-        <div className="task-modal-header">
-          <span className="task-modal-title">Задача №{task.taskNumber ?? '—'}</span>
-          <div className="task-modal-status" ref={statusMenuRef}>
-            <button
-              type="button"
-              className="task-modal-status-pill"
-              onClick={event => {
-                event.stopPropagation();
-                setStatusMenuOpen(prev => !prev);
-              }}
-            >
-              <span className="task-modal-status-dot" data-status={statusDraft} />
-              {statusLabels[statusDraft]}
-            </button>
-            {statusMenuOpen && (
-              <div className="task-modal-status-menu">
-                {statusOptions.map(option => (
-                  <button
-                    key={option}
-                    type="button"
-                    className={option === statusDraft ? 'status-menu-option is-active' : 'status-menu-option'}
-                    onClick={event => {
-                      event.stopPropagation();
-                      setStatusDraft(option);
-                      setStatusMenuOpen(false);
-                    }}
-                  >
-                    <span className="task-modal-status-dot" data-status={option} />
-                    {statusLabels[option]}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <TaskViewModalHeader
+          task={task}
+          statusDraft={statusDraft}
+          statusOptions={statusOptions}
+          statusLabels={statusLabels}
+          statusMenuOpen={statusMenuOpen}
+          onToggleMenu={handleStatusToggle}
+          onSelectStatus={handleStatusSelect}
+          statusMenuRef={statusMenuRef}
+        />
       ) : ''}
       width={840}
       footer={task ? (
-        <div className="modal-footer-actions">
-          <button
-            className="btn-secondary"
-            onClick={() => {
-              if (!task || titleError) return;
-              const changeNotes: string[] = [];
-              if (trimmedTitle !== task.title.trim()) changeNotes.push('назву задачі');
-              if (trimmedDescription !== (task.description ?? '').trim()) changeNotes.push('опис задачі');
-              if (statusDraft !== task.status) changeNotes.push('статус задачі');
-              onSaveDetails(task.id, {
-                title: trimmedTitle,
-                description: trimmedDescription || undefined,
-                isPriority: priorityDraft,
-                changeNotes
-              });
-              if (statusDraft !== task.status) {
-                onStatusChange(task, statusDraft);
-              }
-            }}
-            disabled={!detailsDirty || titleError}
-          >
-            Зберегти
-          </button>
-          <button
-            className="btn-danger-soft"
-            aria-label={task ? `Видалити задачу «${task.title}»` : 'Видалити задачу'}
-            onClick={() => {
-              if (!task) return;
-              if (!confirm(`Видалити задачу «${task.title}»?`)) return;
-              onDelete(task.id);
-            }}
-          >
-            Видалити задачу
-          </button>
-        </div>
+        <TaskViewModalFooter
+          detailsDirty={detailsDirty}
+          titleError={titleError}
+          deleteLabel={task ? `Видалити задачу «${task.title}»` : 'Видалити задачу'}
+          onSave={handleSave}
+          onDelete={handleDelete}
+        />
       ) : undefined}
     >
       <div className="modal-stack">
         <div className="modal-text-muted">Скоригуйте XP для кожного бійця та скіла. Anti-exploit зменшує рекомендації при повторюваних задачах.</div>
 
-        <section className="section-stack">
-          <strong className="section-title">Основна інформація</strong>
-          <label className="labeled-field">
-            <span className="field-label">Назва задачі</span>
-            <input
-              value={titleDraft}
-              onChange={e => setTitleDraft(e.target.value)}
-              placeholder="Назва задачі"
-              className="input-control"
-            />
-            {titleError && <span className="helper-text" style={{ color: 'var(--danger)' }}>Назва не може бути порожньою</span>}
-          </label>
-          <label className="labeled-field">
-            <span className="field-label">Опис задачі</span>
-            <textarea
-              value={descriptionDraft}
-              onChange={e => setDescriptionDraft(e.target.value)}
-              rows={3}
-              placeholder="Додайте опис задачі"
-              className="textarea-control"
-            />
-          </label>
-          <label className="checkbox-inline">
-            <input
-              type="checkbox"
-              checked={priorityDraft}
-              onChange={e => setPriorityDraft(e.target.checked)}
-            />
-            <span>Позначити як пріоритетну</span>
-          </label>
-        </section>
+        <TaskDetailsSection
+          titleDraft={titleDraft}
+          onTitleChange={setTitleDraft}
+          titleError={titleError}
+          descriptionDraft={descriptionDraft}
+          onDescriptionChange={setDescriptionDraft}
+          priorityDraft={priorityDraft}
+          onPriorityChange={setPriorityDraft}
+        />
 
         {/* XP секція тимчасово прихована за вимогою */}
 
-        <section className="section-stack">
-          <strong className="section-title">Історія статусів</strong>
-          <ul className="history-list">
-            {activityEntries.map((item, idx) => {
-              if (item.type === 'status') {
-                const { fromStatus, toStatus, changedAt } = item.entry;
-                const fromLabel = fromStatus ? statusLabels[fromStatus as TaskV2Status] : 'Створено';
-                const toLabel = statusLabels[toStatus];
-                return (
-                  <li key={`status-${toStatus}-${changedAt}-${idx}`} className="history-item">
-                    <span className="text-xs text-muted">{fromLabel} →</span>
-                    <span className="text-strong">{toLabel}</span>
-                    <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>{formatDateTime(changedAt)}</span>
-                  </li>
-                );
-              }
-              const { author, message, createdAt, id } = item.entry;
-              return (
-                <li key={`comment-${id}-${idx}`} className="history-item history-item--comment">
-                  <div className="flex-row align-center gap-8">
-                    <strong className="text-sm text-strong">{author}</strong>
-                    <span className="text-xs text-muted">{formatDateTime(createdAt)}</span>
-                  </div>
-                  <div className="text-sm text-strong" style={{ color: 'var(--fg)' }}>{message}</div>
-                </li>
-              );
-            })}
-            {activityEntries.length === 0 && <li className="text-sm text-muted">Записів поки немає.</li>}
-          </ul>
-        </section>
+        <TaskHistorySection
+          activityEntries={activityEntries}
+          statusLabels={statusLabels}
+          formatDateTime={formatDateTime}
+        />
 
-        <section className="section-stack">
-          <strong className="section-title">Додати коментар</strong>
-          <textarea
-            value={commentDraft}
-            onChange={e => setCommentDraft(e.target.value)}
-            rows={3}
-            placeholder="Поділитися оновленням або рішенням по задачі"
-            className="textarea-control"
-          />
-          <div className="comment-actions">
-            <button
-              onClick={() => {
-                if (!task) return;
-                const trimmed = commentDraft.trim();
-                if (!trimmed) return;
-                onAddComment(task.id, trimmed);
-                setCommentDraft('');
-              }}
-              disabled={!commentDraft.trim()}
-              className="btn-panel"
-            >Залишити коментар</button>
-          </div>
-        </section>
+        <TaskCommentSection
+          commentDraft={commentDraft}
+          onCommentChange={setCommentDraft}
+          onSubmit={handleCommentSubmit}
+        />
       </div>
     </Modal>
   );

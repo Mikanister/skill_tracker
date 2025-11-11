@@ -20,9 +20,10 @@ export function CategoryList({ categories, selectedCategoryId, onSelect }: Props
                 textAlign: 'left',
                 padding: '8px 10px',
                 marginBottom: 6,
-                background: c.id === selectedCategoryId ? '#e6f0ff' : '#f7f7f7',
-                border: '1px solid #dcdcdc',
+                background: c.id === selectedCategoryId ? 'var(--surface-accent-pill)' : 'var(--surface-panel)',
+                border: '1px solid var(--border-subtle)',
                 borderRadius: 6,
+                color: 'var(--fg)',
                 cursor: 'pointer'
               }}
             >

@@ -30,7 +30,7 @@ export function FighterManager({ fighters, selectedFighterId, onSelect, onAdd, c
     <div style={{ padding: 12 }}>
       <h3 style={{ marginTop: 0 }}>Бійці</h3>
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Ім'я бійця" style={{ flex: 1, padding: 8, border: '1px solid #dcdcdc', borderRadius: 6 }} />
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Ім'я бійця" style={{ flex: 1, padding: 8, border: '1px solid var(--border-subtle)', borderRadius: 6, background: 'var(--surface-panel)', color: 'var(--fg)' }} />
         <button
           onClick={() => {
             const v = name.trim();
@@ -52,7 +52,7 @@ export function FighterManager({ fighters, selectedFighterId, onSelect, onAdd, c
           <li key={f.id}>
             <button
               onClick={() => onSelect(f.id)}
-              style={{ width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: 6, background: f.id === selectedFighterId ? '#e6f0ff' : '#f7f7f7', border: '1px solid #dcdcdc', borderRadius: 6 }}
+              style={{ width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: 6, background: f.id === selectedFighterId ? 'var(--surface-accent-pill)' : 'var(--surface-panel)', border: '1px solid var(--border-subtle)', borderRadius: 6 }}
             >
               {f.name}
             </button>
@@ -64,14 +64,14 @@ export function FighterManager({ fighters, selectedFighterId, onSelect, onAdd, c
           <div style={{ fontWeight: 700, marginBottom: 6 }}>Призначені скіли та рівні</div>
           {categories.map(cat => (
             <div key={cat.id} style={{ marginBottom: 8 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, color: '#666', marginBottom: 4 }}>{cat.name}</div>
+              <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>{cat.name}</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', gap: 8 }}>
                 {cat.skills.map(s => {
                   const assigned = !!fighterSkills[selectedFighterId!]?.[s.id];
                   const level = (fighterSkillLevels[selectedFighterId!]?.[s.id] ?? 0) as 0|1|2|3|4|5|6|7|8|9|10;
                   return (
                     <>
-                      <label key={s.id + '-lbl'} style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #ddd', padding: '4px 8px', borderRadius: 999 }}>
+                      <label key={s.id + '-lbl'} style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--border-subtle)', padding: '4px 8px', borderRadius: 999, background: 'var(--surface-panel-alt)' }}>
                         <input
                           type="checkbox"
                           checked={assigned}
@@ -86,7 +86,7 @@ export function FighterManager({ fighters, selectedFighterId, onSelect, onAdd, c
                         />
                         {s.name}
                       </label>
-                      <span key={s.id + '-lvl'} style={{ fontSize: 12, padding: '2px 8px', border: '1px solid #ddd', borderRadius: 999 }}>lvl {level}</span>
+                      <span key={s.id + '-lvl'} style={{ fontSize: 12, padding: '2px 8px', border: '1px solid var(--border-subtle)', borderRadius: 999, color: 'var(--muted)' }}>lvl {level}</span>
                     </>
                   );
                 })}
@@ -98,13 +98,13 @@ export function FighterManager({ fighters, selectedFighterId, onSelect, onAdd, c
 
       <Modal open={open} onClose={() => setOpen(false)} title={editingFighterId ? "Рівні скілів бійця" : "Початкові рівні скілів"} width={720}>
         <div style={{ display: 'grid', gap: 10 }}>
-          <div style={{ color: '#666' }}>
+          <div style={{ color: 'var(--muted)' }}>
             <>Вкажіть рівні володіння навичками для «{name.trim()}». Рівень 0 означає, що навичка не призначена. Після створення рівні змінюються лише від XP.</>
           </div>
-          <div style={{ maxHeight: 420, overflow: 'auto', border: '1px solid #eee', borderRadius: 8, padding: 8 }}>
+          <div style={{ maxHeight: 420, overflow: 'auto', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 8, background: 'var(--surface-panel)' }}>
             {categories.map(cat => (
               <div key={cat.id} style={{ marginBottom: 10 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: '#666', marginBottom: 6 }}>{cat.name}</div>
+                <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--muted)', marginBottom: 6 }}>{cat.name}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6 }}>
                   {cat.skills.map(s => (
                     <>
@@ -113,7 +113,7 @@ export function FighterManager({ fighters, selectedFighterId, onSelect, onAdd, c
                         key={s.id + '-sel'}
                         value={levels[s.id] ?? 0}
                         onChange={e => setLevels(prev => ({ ...prev, [s.id]: Number(e.target.value) as 0|1|2|3|4|5|6|7|8|9|10 }))}
-                        style={{ padding: '4px 6px', width: 70 }}
+                        style={{ padding: '4px 6px', width: 70, border: '1px solid var(--border-subtle)', borderRadius: 6, background: 'var(--surface-panel)', color: 'var(--fg)' }}
                       >
                         {[0,1,2,3,4,5,6,7,8,9,10].map(n => (<option key={n} value={n}>{n}</option>))}
                       </select>
@@ -133,7 +133,7 @@ export function FighterManager({ fighters, selectedFighterId, onSelect, onAdd, c
                 setName('');
                 setOpen(false);
               }}
-              style={{ padding: '6px 10px', background: '#eaffea', border: '1px solid #c7e3c7', borderRadius: 6 }}
+              style={{ padding: '6px 10px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 6, color: 'var(--fg)' }}
             >
               Створити бійця
             </button>

@@ -33,8 +33,8 @@ export function TaskModal({ open, onClose, initial, onSave }: Props) {
       onClose={onClose}
       title={initial ? 'Редагувати завдання' : 'Створити завдання'}
       footer={(
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-          <button onClick={onClose} style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)' }}>Скасувати</button>
+        <div className="modal-footer-actions">
+          <button onClick={onClose} className="btn-panel">Скасувати</button>
           <button
             disabled={!canSave}
             onClick={() => {
@@ -47,37 +47,37 @@ export function TaskModal({ open, onClose, initial, onSave }: Props) {
               onSave(task);
               onClose();
             }}
-            style={{ padding: '8px 14px', borderRadius: 10, background: 'var(--success-soft-bg)', border: '1px solid var(--success-soft-border)', color: 'var(--fg)', fontWeight: 600, boxShadow: 'var(--shadow-sm)', opacity: canSave ? 1 : 0.6 }}
+            className="btn-success-soft"
           >
             Зберегти
           </button>
         </div>
       )}
     >
-      <div style={{ display: 'grid', gap: 12 }}>
+      <div className="modal-stack">
         {error && (
-          <div style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--danger-soft-border)', background: 'var(--danger-soft-bg)', color: 'var(--fg)', fontSize: 13 }}>
+          <div className="alert-danger-soft" role="alert">
             {error}
           </div>
         )}
-        <label style={{ display: 'grid', gap: 6, fontSize: 13, color: 'var(--muted)' }}>
-          <span style={{ fontWeight: 600, color: 'var(--fg)' }}>Назва</span>
-          <input value={text} onChange={e => { setText(e.target.value); setError(null); }} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)', boxShadow: 'var(--shadow-sm)' }} />
+        <label className="labeled-field text-sm text-muted">
+          <span className="text-strong">Назва</span>
+          <input value={text} onChange={e => { setText(e.target.value); setError(null); }} className="input-control input-control--wide" />
         </label>
-        <label style={{ display: 'grid', gap: 6, fontSize: 13, color: 'var(--muted)' }}>
-          <span style={{ fontWeight: 600, color: 'var(--fg)' }}>Опис</span>
-          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={4} style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)', boxShadow: 'var(--shadow-sm)', resize: 'vertical' }} />
+        <label className="labeled-field text-sm text-muted">
+          <span className="text-strong">Опис</span>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={4} className="textarea-control" />
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: 'var(--muted)' }}>
-          <span style={{ fontWeight: 600, color: 'var(--fg)' }}>Складність</span>
-          <select value={difficulty} onChange={e => setDifficulty(Number(e.target.value) as 1|2|3|4|5)} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)', boxShadow: 'var(--shadow-sm)' }}>
+        <label className="labeled-field labeled-field--inline text-sm text-muted">
+          <span className="text-strong">Складність</span>
+          <select value={difficulty} onChange={e => setDifficulty(Number(e.target.value) as 1|2|3|4|5)} className="input-control">
             {[1,2,3,4,5].map(n => (
               <option key={n} value={n}>{n}</option>
             ))}
           </select>
         </label>
         {initial && (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--muted)' }}>
+          <label className="checkbox-inline text-sm text-muted">
             <input type="checkbox" checked={done} onChange={e => setDone(e.target.checked)} />
             <span>Позначити виконаним</span>
           </label>
