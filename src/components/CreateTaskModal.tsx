@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Category, Fighter, FighterSkills, Skill } from '@/types';
 import { Modal } from './Modal';
+import { ModalActions } from './ModalActions';
 
 type Props = {
   open: boolean;
@@ -44,56 +45,60 @@ export function CreateTaskModal({ open, onClose, fighter, fighterSkills, categor
       title="Нова задача"
       width={760}
       footer={(
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-          <button
-            onClick={() => {
-              setTitle('');
-              setDescription('');
-              setXp(0);
-              setDifficulty(3);
-              setSelectedSkills({});
-              setError(null);
-              onClose();
-            }}
-            style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'var(--surface-panel)', color: 'var(--fg)' }}
-          >Скасувати</button>
-          <button
-            onClick={() => {
-              if (!fighter) return;
-              if (!title.trim()) {
-                setError('Вкажіть назву задачі.');
-                return;
-              }
-              const picked = Object.keys(selectedSkills).filter(id => selectedSkills[id]);
-              if (picked.length === 0) {
-                setError('Оберіть хоча б одну навичку.');
-                return;
-              }
-              const payloadLinks = picked.map(skillId => {
-                const record = allowedSkills.find(x => x.skill.id === skillId);
-                return {
-                  skillId,
-                  categoryId: record?.categoryId ?? '',
-                  xp: Math.max(0, Math.round(xp))
-                };
-              });
-              onCreate({
-                title: title.trim(),
-                description: description.trim(),
-                difficulty,
-                links: payloadLinks
-              });
-              setTitle('');
-              setDescription('');
-              setXp(0);
-              setDifficulty(3);
-              setSelectedSkills({});
-              setError(null);
-              onClose();
-            }}
-            style={{ padding: '8px 14px', borderRadius: 10, background: 'var(--success-soft-bg)', border: '1px solid var(--success-soft-border)', color: 'var(--fg)', fontWeight: 600, boxShadow: 'var(--shadow-sm)' }}
-          >Створити</button>
-        </div>
+        <ModalActions
+          actions={[
+            {
+              label: 'Скасувати',
+              onClick: () => {
+                setTitle('');
+                setDescription('');
+                setXp(0);
+                setDifficulty(3);
+                setSelectedSkills({});
+                setError(null);
+                onClose();
+              },
+              variant: 'panel'
+            },
+            {
+              label: 'Створити',
+              onClick: () => {
+                if (!fighter) return;
+                if (!title.trim()) {
+                  setError('Вкажіть назву задачі.');
+                  return;
+                }
+                const picked = Object.keys(selectedSkills).filter(id => selectedSkills[id]);
+                if (picked.length === 0) {
+                  setError('Оберіть хоча б одну навичку.');
+                  return;
+                }
+                const payloadLinks = picked.map(skillId => {
+                  const record = allowedSkills.find(x => x.skill.id === skillId);
+                  return {
+                    skillId,
+                    categoryId: record?.categoryId ?? '',
+                    xp: Math.max(0, Math.round(xp))
+                  };
+                });
+                onCreate({
+                  title: title.trim(),
+                  description: description.trim(),
+                  difficulty,
+                  links: payloadLinks
+                });
+                setTitle('');
+                setDescription('');
+                setXp(0);
+                setDifficulty(3);
+                setSelectedSkills({});
+                setError(null);
+                onClose();
+              },
+              variant: 'success-soft'
+            }
+          ]}
+        />
       )}
     >
       <div style={{ display: 'grid', gap: 16 }}>

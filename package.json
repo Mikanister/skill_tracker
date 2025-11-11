@@ -9,7 +9,8 @@
     "preview": "vite preview --port 5173",
     "test": "vitest --run",
     "test:ui": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "docs:api": "typedoc"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -27,6 +28,7 @@
     "@vitejs/plugin-react": "^4.3.3",
     "@vitest/coverage-v8": "^4.0.7",
     "jsdom": "^27.1.0",
+    "typedoc": "^0.28.14",
     "typescript": "^5.6.3",
     "vite": "^5.4.10",
     "vitest": "^4.0.7"
