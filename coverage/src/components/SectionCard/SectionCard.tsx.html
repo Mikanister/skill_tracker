@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">80% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>12/15</span>
+                <span class='fraction'>15/15</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">72.72% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>8/11</span>
+                <span class='fraction'>11/11</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">84.61% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>11/13</span>
+                <span class='fraction'>13/13</span>
             </div>
         
             
@@ -118,32 +118,32 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">69x</span>
-<span class="cline-any cline-yes">69x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">75x</span>
+<span class="cline-any cline-yes">74x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">69x</span>
-<span class="cline-any cline-yes">69x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">73x</span>
+<span class="cline-any cline-yes">72x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">69x</span>
-<span class="cline-any cline-yes">69x</span>
-<span class="cline-any cline-yes">69x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">69x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">75x</span>
+<span class="cline-any cline-yes">75x</span>
+<span class="cline-any cline-yes">75x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">75x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -164,17 +164,17 @@ type SectionCardProps = {
 };
 &nbsp;
 const renderTitle = (title: React.ReactNode) =&gt; {
-  <span class="missing-if-branch" title="else path not taken" >E</span>if (typeof title === 'string') {
+  if (typeof title === 'string') {
     return &lt;h3 className="text-md text-strong"&gt;{title}&lt;/h3&gt;;
   }
-<span class="cstat-no" title="statement not covered" >  return title;</span>
+  return title;
 };
 &nbsp;
 const renderDescription = (description: React.ReactNode) =&gt; {
-  <span class="missing-if-branch" title="else path not taken" >E</span>if (typeof description === 'string') {
+  if (typeof description === 'string') {
     return &lt;p className="text-sm text-muted"&gt;{description}&lt;/p&gt;;
   }
-<span class="cstat-no" title="statement not covered" >  return description;</span>
+  return description;
 };
 &nbsp;
 export const SectionCard: React.FC&lt;SectionCardProps&gt; = ({
@@ -186,7 +186,7 @@ export const SectionCard: React.FC&lt;SectionCardProps&gt; = ({
 }) =&gt; {
   const classes = ['section-card'];
   if (variant === 'danger') classes.push('section-card--danger');
-  <span class="missing-if-branch" title="if path not taken" >I</span>if (className) <span class="cstat-no" title="statement not covered" >classes.push(className);</span>
+  if (className) classes.push(className);
 &nbsp;
   return (
     &lt;section className={classes.join(' ')}&gt;
@@ -205,7 +205,7 @@ export const SectionCard: React.FC&lt;SectionCardProps&gt; = ({
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-11-13T20:14:16.763Z
+                at 2025-11-13T21:12:06.146Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
