@@ -18,12 +18,13 @@ export type UseTaskStateArgs = {
 export type UseTaskState = {
   tasks: TaskV2[];
   setTasks: Dispatch<SetStateAction<TaskV2[]>>;
-  createTask: (payload: Omit<TaskV2, 'id' | 'status' | 'createdAt' | 'submittedAt' | 'approvedAt' | 'taskNumber' | 'history' | 'comments'>) => void;
+  createTask: (payload: Omit<TaskV2, 'id' | 'status' | 'createdAt' | 'submittedAt' | 'approvedAt' | 'taskNumber' | 'history' | 'comments' | 'hasUnreadComments'>) => void;
   updateTaskStatus: (taskId: string, status: TaskV2Status) => void;
-  updateTaskDetails: (taskId: string, updates: { title?: string; description?: string; isPriority?: boolean }) => void;
+  updateTaskDetails: (taskId: string, updates: { title?: string; description?: string; isPriority?: boolean; difficulty?: 1 | 2 | 3 | 4 | 5 }) => void;
   approveTask: (taskId: string, approved: Record<string, Record<string, number>>) => void;
   deleteTask: (taskId: string) => void;
   addTaskComment: (taskId: string, message: string, author?: string) => void;
+  markTaskCommentsRead: (taskId: string) => void;
 };
 
 /**
@@ -39,7 +40,7 @@ export function useTaskState({ setXpLedger, undoManager }: UseTaskStateArgs): Us
   }, [tasks]);
 
   function createTask(
-    payload: Omit<TaskV2, 'id' | 'status' | 'createdAt' | 'submittedAt' | 'approvedAt' | 'taskNumber' | 'history' | 'comments'>
+    payload: Omit<TaskV2, 'id' | 'status' | 'createdAt' | 'submittedAt' | 'approvedAt' | 'taskNumber' | 'history' | 'comments' | 'hasUnreadComments'>
   ) {
     const timestamp = Date.now();
     setTasks(prev => {
@@ -51,6 +52,7 @@ export function useTaskState({ setXpLedger, undoManager }: UseTaskStateArgs): Us
         taskNumber: nextNumber,
         history: [{ fromStatus: null, toStatus: 'todo', changedAt: timestamp }],
         comments: [],
+        hasUnreadComments: false,
         ...payload,
         isPriority: payload.isPriority ?? false
       };
@@ -76,7 +78,7 @@ export function useTaskState({ setXpLedger, undoManager }: UseTaskStateArgs): Us
     );
   }
 
-  function updateTaskDetails(taskId: string, updates: { title?: string; description?: string; isPriority?: boolean }) {
+  function updateTaskDetails(taskId: string, updates: { title?: string; description?: string; isPriority?: boolean; difficulty?: 1 | 2 | 3 | 4 | 5 }) {
     setTasks(prev =>
       prev.map(task => {
         if (task.id !== taskId) return task;
@@ -89,6 +91,9 @@ export function useTaskState({ setXpLedger, undoManager }: UseTaskStateArgs): Us
         }
         if (Object.prototype.hasOwnProperty.call(updates, 'isPriority')) {
           next.isPriority = !!updates.isPriority;
+        }
+        if (Object.prototype.hasOwnProperty.call(updates, 'difficulty') && updates.difficulty) {
+          next.difficulty = updates.difficulty;
         }
         return next;
       })
@@ -161,7 +166,31 @@ export function useTaskState({ setXpLedger, undoManager }: UseTaskStateArgs): Us
       createdAt: Date.now()
     };
     setTasks(prev =>
-      prev.map(task => (task.id === taskId ? { ...task, comments: [...(task.comments ?? []), comment] } : task))
+      prev.map(task => (task.id === taskId
+        ? {
+            ...task,
+            comments: [...(task.comments ?? []), comment],
+            hasUnreadComments: true
+          }
+        : task))
+    );
+  }
+
+  function markTaskCommentsRead(taskId: string) {
+    setTasks(prev =>
+      prev.map(task => {
+        if (task.id !== taskId) return task;
+        const comments = task.comments ?? [];
+        const unreadExists = task.hasUnreadComments || comments.some(comment => !comment.readAt);
+        if (!unreadExists) return task.hasUnreadComments ? { ...task, hasUnreadComments: false } : task;
+        const now = Date.now();
+        const nextComments = comments.map(comment => (comment.readAt ? comment : { ...comment, readAt: now }));
+        return {
+          ...task,
+          comments: nextComments,
+          hasUnreadComments: false
+        };
+      })
     );
   }
 
@@ -173,6 +202,7 @@ export function useTaskState({ setXpLedger, undoManager }: UseTaskStateArgs): Us
     updateTaskDetails,
     approveTask,
     deleteTask,
-    addTaskComment
+    addTaskComment,
+    markTaskCommentsRead
   };
 }

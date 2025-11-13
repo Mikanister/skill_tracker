@@ -86,9 +86,9 @@ export const FighterCard: React.FC<FighterCardProps> = ({
       </div>
 
       {topSkills.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="fighter-card-skill-list">
           {topSkills.map((name, index) => (
-            <span key={`${fighter.id}-${name}-${index}`} style={{ fontSize: 11, padding: '3px 8px', background: 'var(--surface-accent-pill)', border: '1px solid var(--surface-accent-pill-border)', borderRadius: 999, color: 'var(--fg)' }}>
+            <span key={`${fighter.id}-${name}-${index}`} className="fighter-skill-chip">
               {name}
             </span>
           ))}

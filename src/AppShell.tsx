@@ -85,6 +85,7 @@ export default function AppShell() {
             deleteTask={state.deleteTaskV2}
             fighterSkillLevels={state.fighterSkillLevels}
             addComment={state.addTaskComment}
+            markTaskCommentsRead={state.markTaskCommentsRead}
           />} />
           <Route path="/fighters" element={<Fighters
             fighters={state.fighters}

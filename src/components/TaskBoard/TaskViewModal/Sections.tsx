@@ -2,36 +2,38 @@ import React from 'react';
 import { TaskV2, TaskV2Status } from '@/types';
 import { TaskActivityEntry } from '@/components/TaskBoard/taskActivity';
 
+const DIFFICULTY_OPTIONS: (1 | 2 | 3 | 4 | 5)[] = [1, 2, 3, 4, 5];
+
 export type TaskDetailsSectionProps = {
-  titleDraft: string;
-  onTitleChange: (value: string) => void;
-  titleError: boolean;
   descriptionDraft: string;
   onDescriptionChange: (value: string) => void;
   priorityDraft: boolean;
   onPriorityChange: (value: boolean) => void;
+  difficultyDraft: 1 | 2 | 3 | 4 | 5;
+  onDifficultyChange: (value: 1 | 2 | 3 | 4 | 5) => void;
 };
 
 export const TaskDetailsSection: React.FC<TaskDetailsSectionProps> = ({
-  titleDraft,
-  onTitleChange,
-  titleError,
   descriptionDraft,
   onDescriptionChange,
   priorityDraft,
-  onPriorityChange
+  onPriorityChange,
+  difficultyDraft,
+  onDifficultyChange
 }) => (
   <section className="section-stack">
     <strong className="section-title">Основна інформація</strong>
     <label className="labeled-field">
-      <span className="field-label">Назва задачі</span>
-      <input
-        value={titleDraft}
-        onChange={event => onTitleChange(event.target.value)}
-        placeholder="Назва задачі"
+      <span className="field-label">Складність задачі</span>
+      <select
+        value={difficultyDraft}
+        onChange={event => onDifficultyChange(Number(event.target.value) as 1 | 2 | 3 | 4 | 5)}
         className="input-control"
-      />
-      {titleError && <span className="helper-text helper-text--danger">Назва не може бути порожньою</span>}
+      >
+        {DIFFICULTY_OPTIONS.map(option => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
     </label>
     <label className="labeled-field">
       <span className="field-label">Опис задачі</span>

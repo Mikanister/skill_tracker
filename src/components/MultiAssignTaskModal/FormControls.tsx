@@ -28,8 +28,9 @@ export const FormControls: React.FC<FormControlsProps> = ({
   <>
     <div className="multiassign-row">
       <label className="labeled-field text-sm text-muted">
-        <span className="text-strong">Назва</span>
+        <span className="text-strong" id="multiassign-title-label">Назва</span>
         <input
+          aria-labelledby="multiassign-title-label"
           value={title}
           onChange={event => onTitleChange(event.target.value)}
           placeholder="Вкажіть назву"
@@ -37,8 +38,9 @@ export const FormControls: React.FC<FormControlsProps> = ({
         />
       </label>
       <label className="labeled-field text-sm text-muted">
-        <span className="text-strong">Складність</span>
+        <span className="text-strong" id="multiassign-difficulty-label">Складність</span>
         <select
+          aria-labelledby="multiassign-difficulty-label"
           value={difficulty}
           onChange={event => onDifficultyChange(Number(event.target.value) as 1|2|3|4|5)}
           className="input-control"
@@ -56,8 +58,9 @@ export const FormControls: React.FC<FormControlsProps> = ({
     </label>
 
     <label className="labeled-field text-sm text-muted">
-      <span className="text-strong">Опис</span>
+      <span className="text-strong" id="multiassign-description-label">Опис</span>
       <textarea
+        aria-labelledby="multiassign-description-label"
         value={description}
         onChange={event => onDescriptionChange(event.target.value)}
         rows={4}

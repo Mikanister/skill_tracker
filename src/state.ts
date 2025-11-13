@@ -63,7 +63,8 @@ export function useSkillRpgState() {
     updateTaskDetails: updateTaskV2Details,
     approveTask: approveTaskV2,
     deleteTask: deleteTaskV2,
-    addTaskComment
+    addTaskComment,
+    markTaskCommentsRead
   } = useTaskState({ setXpLedger, undoManager });
 
   useEffect(() => {
@@ -164,6 +165,7 @@ export function useSkillRpgState() {
     addFighter,
     deleteFighter,
     addTaskComment,
+    markTaskCommentsRead,
     performUndo,
     canUndo: undoManager.size > 0
   };

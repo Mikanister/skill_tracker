@@ -104,13 +104,14 @@ export type TaskComment = {
   author: string;
   message: string;
   createdAt: number;
+  readAt?: number;
 };
 
 export type TaskV2 = {
   id: string;
   title: string;
   description?: string;
-  difficulty: 1|2|3|4|5;
+  difficulty?: 1|2|3|4|5;
   assignees: TaskV2Assignee[];
   status: TaskV2Status;
   createdAt: number;
@@ -120,5 +121,5 @@ export type TaskV2 = {
   history?: TaskStatusHistoryEntry[];
   comments?: TaskComment[];
   isPriority?: boolean;
+  hasUnreadComments?: boolean;
 };
-

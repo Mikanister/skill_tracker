@@ -17,9 +17,11 @@ describe('storage utilities', () => {
 
   it('safeSetItem handles quota errors gracefully', () => {
     const error = new DOMException('Quota exceeded', 'QuotaExceededError');
+    const warnSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw error; });
     const ok = safeSetItem('key', { foo: 'bar' });
     expect(ok).toBe(false);
+    expect(warnSpy).toHaveBeenCalledWith('localStorage quota exceeded');
   });
 
   it('safeGetItem returns default when key missing', () => {
@@ -49,9 +51,11 @@ describe('storage utilities', () => {
   });
 
   it('safeGetItem handles malformed JSON', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     localStorage.setItem('foo', '{ not json');
     const value = safeGetItem('foo', 'fallback');
     expect(value).toBe('fallback');
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to load from localStorage (key: foo):'), expect.any(SyntaxError));
   });
 
   it('safeRemoveItem removes value without throwing', () => {
@@ -60,10 +64,28 @@ describe('storage utilities', () => {
     expect(localStorage.getItem('foo')).toBeNull();
   });
 
+  it('safeRemoveItem logs error when removal fails', () => {
+    const error = new Error('remove failed');
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw error; });
+    safeRemoveItem('foo');
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to remove from localStorage (key: foo):'), error);
+  });
+
   it('generateId includes prefix when provided', () => {
     const id = generateId('test');
     expect(id.startsWith('test_')).toBe(true);
     expect(id.split('_')).toHaveLength(3);
+  });
+
+  it('generateId creates unique ids for successive calls', () => {
+    vi.useFakeTimers().setSystemTime(new Date('2024-01-01T00:00:00Z'));
+    vi.spyOn(Math, 'random').mockReturnValue(0.123456789);
+    const first = generateId();
+    vi.spyOn(Math, 'random').mockReturnValue(0.987654321);
+    const second = generateId();
+    expect(first).not.toBe(second);
+    vi.useRealTimers();
   });
 
   it('safeGetItem without parser returns parsed JSON', () => {

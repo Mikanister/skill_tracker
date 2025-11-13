@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { SkillTree, FighterSkillLevels } from '@/types';
 import {
   isFighter,
@@ -12,6 +12,13 @@ import {
 } from './storageAdapters';
 
 describe('storageAdapters', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   it('isFighter validates minimal fighter shape', () => {
     expect(isFighter({ id: 'f1', name: 'Alpha' })).toBe(true);
     expect(isFighter({ id: 123, name: 'Alpha' })).toBe(false);
@@ -34,6 +41,7 @@ describe('storageAdapters', () => {
     const valid = [{ id: 't1', title: 'Task', assignees: [] }];
     expect(parseTasksV2(valid, fallback)).toEqual(valid);
     expect(parseTasksV2([{ id: 't2', title: 1, assignees: [] }], fallback)).toBe(fallback);
+    expect(parseTasksV2(undefined, fallback)).toBe(fallback);
   });
 
   it('parseSkillTree enforces structure', () => {
@@ -55,6 +63,7 @@ describe('storageAdapters', () => {
     const valid: Record<string, FighterSkillLevels> = { f1: { s1: 0, s2: 10 } };
     expect(parseFighterSkillLevels(valid, fallback)).toEqual(valid);
     expect(parseFighterSkillLevels({ f1: { s1: 11 } }, fallback)).toBe(fallback);
+    expect(parseFighterSkillLevels(null, fallback)).toBe(fallback);
   });
 
   it('parseFighterSkills validates boolean flags', () => {
@@ -62,5 +71,6 @@ describe('storageAdapters', () => {
     const valid = { f1: { s1: true, s2: false } };
     expect(parseFighterSkills(valid, fallback)).toEqual(valid);
     expect(parseFighterSkills({ f1: { s1: 'yes' } }, fallback)).toBe(fallback);
+    expect(parseFighterSkills(undefined, fallback)).toBe(fallback);
   });
 });

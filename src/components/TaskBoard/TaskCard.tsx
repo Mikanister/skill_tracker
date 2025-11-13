@@ -1,14 +1,6 @@
 import React from 'react';
 import clsx from 'clsx';
-import { Fighter, TaskV2, TaskV2Status } from '@/types';
-
-const STATUS_LABELS: Record<TaskV2Status, string> = {
-  todo: 'To Do',
-  in_progress: 'In Progress',
-  validation: 'Validation',
-  done: 'Done',
-  archived: 'Archived'
-};
+import { Fighter, TaskV2 } from '@/types';
 
 type TaskCardProps = {
   task: TaskV2;
@@ -19,8 +11,6 @@ type TaskCardProps = {
   fightersMap: Map<string, Fighter>;
   onArchive?: (task: TaskV2) => void;
   onRestore: (task: TaskV2) => void;
-  onStatusChange?: (task: TaskV2, next: TaskV2Status) => void;
-  formatDateTime: (value?: number) => string;
 };
 
 export const TaskCard: React.FC<TaskCardProps> = ({
@@ -30,8 +20,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onDragEnd,
   onSelect,
   fightersMap,
-  onRestore,
-  formatDateTime
+  onArchive,
+  onRestore
 }) => {
   return (
     <div
@@ -45,27 +35,50 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         <div className="task-card-heading">
           <span className="task-card-title">{task.title}</span>
           <div className="task-card-meta-row">
-            {task.isPriority && <span className="task-priority-dot" aria-label="Пріоритетна задача" />}
-            {task.difficulty && (<span className="task-chips">⚩️ {task.difficulty}</span>)}
-            {task.status !== 'archived' && (
-              <span className="task-status-pill">
-                <span className="task-status-dot" />
-                {STATUS_LABELS[task.status]}
+            {task.isPriority && (
+              <span className="task-priority-chip" aria-label="Пріоритетна задача">
+                <span className="task-priority-chip-dot" />
+                Пріоритет
               </span>
+            )}
+            {task.hasUnreadComments && (
+              <span
+                className="task-comment-indicator"
+                aria-label="Непрочитані коментарі"
+                title="Нові коментарі"
+              />
             )}
           </div>
         </div>
-        {task.status === 'archived' && (
-          <button
-            onClick={event => {
-              event.stopPropagation();
-              onRestore(task);
-            }}
-            className="btn-panel"
-          >
-            Відновити
-          </button>
-        )}
+        <div className="task-card-header-aside">
+          {typeof task.difficulty === 'number' && (
+            <span className="task-difficulty-badge" aria-label="Складність задачі">
+              ⚙️ {task.difficulty}
+            </span>
+          )}
+          {task.status !== 'archived' && onArchive && (
+            <button
+              onClick={event => {
+                event.stopPropagation();
+                onArchive(task);
+              }}
+              className="btn-panel"
+            >
+              Архівувати
+            </button>
+          )}
+          {task.status === 'archived' && (
+            <button
+              onClick={event => {
+                event.stopPropagation();
+                onRestore(task);
+              }}
+              className="btn-panel"
+            >
+              Відновити
+            </button>
+          )}
+        </div>
       </div>
 
       {task.description && <div className="task-card-body">{task.description}</div>}
@@ -84,16 +97,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         })}
       </div>
 
-      {task.comments?.length ? (
-        <div className="task-card-footer">
-          <span className="task-comment-author">
-            <span aria-hidden="true">💬</span>
-            {task.comments[task.comments.length - 1]?.author}
-          </span>
-          <span className="task-comment-time">{formatDateTime(task.comments[task.comments.length - 1]?.createdAt)}</span>
-        </div>
-      ) : null}
     </div>
   );
-}
-;
+};

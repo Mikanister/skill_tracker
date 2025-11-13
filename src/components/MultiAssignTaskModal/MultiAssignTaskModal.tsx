@@ -29,9 +29,6 @@ const DEFAULT_DIFFICULTY: 1|2|3|4|5 = 3;
 
 const hasTitle = (value: string) => value.trim().length > 0;
 
-const buildAssigneeCount = (fighters: Fighter[], selected: Record<string, boolean>) =>
-  fighters.reduce((count, fighter) => count + (selected[fighter.id] ? 1 : 0), 0);
-
 const mapSelectedFighters = (fighters: Fighter[], selected: Record<string, boolean>) =>
   fighters.filter(fighter => selected[fighter.id]);
 

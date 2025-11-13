@@ -65,7 +65,15 @@ export const TaskBoardSection: React.FC<TaskBoardSectionProps> = ({
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(260px, 1fr))', gap: 18, minHeight: 0, flex: 1 }}>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+        gap: 18,
+        minHeight: 0,
+        flex: 1
+      }}
+    >
       {boardColumns.map(([status, label]) => (
         <TaskColumn
           key={status}

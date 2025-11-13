@@ -27,9 +27,10 @@ export type TaskViewModalProps = {
   setPriorityDraft: React.Dispatch<React.SetStateAction<boolean>>;
   onClose: () => void;
   onDelete: (taskId: string) => void;
-  onSaveDetails: (taskId: string, payload: { title: string; description?: string; isPriority: boolean; changeNotes: string[] }) => void;
+  onSaveDetails: (taskId: string, payload: { title: string; description?: string; isPriority: boolean; difficulty: 1 | 2 | 3 | 4 | 5; changeNotes: string[] }) => void;
   onAddComment: (taskId: string, message: string) => void;
   onStatusChange: (task: TaskV2, status: TaskV2Status) => void;
+  onApproveTask?: (taskId: string, approvalMap: Record<string, Record<string, number>>, comment?: string) => void;
   statusLabels: Record<TaskV2Status, string>;
   formatDateTime: (value?: number) => string;
 };
@@ -54,17 +55,17 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
   onSaveDetails,
   onAddComment,
   onStatusChange,
+  onApproveTask,
   statusLabels,
   formatDateTime
 }) => {
   const [statusDraft, setStatusDraft] = useState<TaskV2Status>('todo');
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   const statusMenuRef = useRef<HTMLDivElement>(null);
+  const [difficultyDraft, setDifficultyDraft] = useState<1 | 2 | 3 | 4 | 5>(3);
 
   const statusOptions = useMemo(() => (
-    Object.keys(statusLabels)
-      .filter(key => key !== 'archived')
-      .map(key => key as TaskV2Status)
+    Object.keys(statusLabels).map(key => key as TaskV2Status)
   ), [statusLabels]);
 
   useEffect(() => {
@@ -72,6 +73,7 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
     setTitleDraft(task.title);
     setDescriptionDraft(task.description ?? '');
     setPriorityDraft(!!task.isPriority);
+    setDifficultyDraft(task.difficulty ?? 3);
     setStatusDraft(task.status);
     setStatusMenuOpen(false);
     const init: Record<string, Record<string, number>> = {};
@@ -109,9 +111,10 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
       trimmedTitle !== task.title.trim() ||
       trimmedDescription !== (task.description ?? '').trim() ||
       priorityDraft !== !!task.isPriority ||
+      difficultyDraft !== (task.difficulty ?? 3) ||
       statusDraft !== task.status
     );
-  }, [task, trimmedTitle, trimmedDescription, priorityDraft, statusDraft]);
+  }, [task, trimmedTitle, trimmedDescription, priorityDraft, difficultyDraft, statusDraft]);
 
   const activityEntries = useMemo(() => buildTaskActivityEntries(task), [task]);
 
@@ -131,11 +134,13 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
     const changeNotes: string[] = [];
     if (trimmedTitle !== task.title.trim()) changeNotes.push('назву задачі');
     if (trimmedDescription !== (task.description ?? '').trim()) changeNotes.push('опис задачі');
+    if (difficultyDraft !== (task.difficulty ?? 3)) changeNotes.push('складність задачі');
     if (statusDraft !== task.status) changeNotes.push('статус задачі');
     onSaveDetails(task.id, {
       title: trimmedTitle,
       description: trimmedDescription || undefined,
       isPriority: priorityDraft,
+      difficulty: difficultyDraft,
       changeNotes
     });
     if (statusDraft !== task.status) {
@@ -157,6 +162,11 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
     setCommentDraft('');
   }, [task, commentDraft, onAddComment, setCommentDraft]);
 
+  const handleApprove = useCallback(() => {
+    if (!task || !onApproveTask) return;
+    onApproveTask(task.id, approved, commentDraft);
+  }, [task, onApproveTask, approved, commentDraft]);
+
   if (!task) return null;
 
   return (
@@ -173,6 +183,9 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
           onToggleMenu={handleStatusToggle}
           onSelectStatus={handleStatusSelect}
           statusMenuRef={statusMenuRef}
+          titleDraft={titleDraft}
+          onTitleChange={setTitleDraft}
+          titleError={titleError}
         />
       ) : ''}
       width={840}
@@ -187,16 +200,13 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
       ) : undefined}
     >
       <div className="modal-stack">
-        <div className="modal-text-muted">Скоригуйте XP для кожного бійця та скіла. Anti-exploit зменшує рекомендації при повторюваних задачах.</div>
-
         <TaskDetailsSection
-          titleDraft={titleDraft}
-          onTitleChange={setTitleDraft}
-          titleError={titleError}
           descriptionDraft={descriptionDraft}
           onDescriptionChange={setDescriptionDraft}
           priorityDraft={priorityDraft}
           onPriorityChange={setPriorityDraft}
+          difficultyDraft={difficultyDraft}
+          onDifficultyChange={setDifficultyDraft}
         />
 
         {/* XP секція тимчасово прихована за вимогою */}
@@ -212,6 +222,18 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
           onCommentChange={setCommentDraft}
           onSubmit={handleCommentSubmit}
         />
+
+        {onApproveTask && (
+          <div className="task-approve-actions">
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleApprove}
+            >
+              Затвердити XP
+            </button>
+          </div>
+        )}
       </div>
     </Modal>
   );
