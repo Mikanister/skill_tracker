@@ -22,17 +22,46 @@ export default function AppShell() {
   }, [theme]);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', height: '100vh', fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif', background: 'var(--app-shell-bg)', color: 'var(--fg)' }}>
-      <aside style={{ borderRight: '1px solid var(--sidebar-border)', padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 16, background: 'var(--sidebar-bg)', backdropFilter: 'blur(12px)', boxShadow: 'var(--sidebar-shadow)' }}>
+    <div className="app-shell">
+      <aside className="app-shell__sidebar">
         <div>
           <div style={{ fontSize: 12, color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>SkillRPG</div>
           <div style={{ fontWeight: 800, fontSize: 22 }}>UA Command</div>
         </div>
-        <nav style={{ display: 'grid', gap: 10 }}>
-          <NavLink to="/" end style={({ isActive }) => navStyle(isActive)}>Дошка задач</NavLink>
-          <NavLink to="/fighters" style={({ isActive }) => navStyle(isActive)}>Бійці</NavLink>
-          <NavLink to="/skills" style={({ isActive }) => navStyle(isActive)}>Каталог навичок</NavLink>
-          <NavLink to="/settings" style={({ isActive }) => navStyle(isActive)}>Налаштування</NavLink>
+        <nav className="app-shell__nav">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              isActive ? 'app-shell__nav-link app-shell__nav-link--active' : 'app-shell__nav-link'
+            }
+          >
+            Дошка задач
+          </NavLink>
+          <NavLink
+            to="/fighters"
+            className={({ isActive }) =>
+              isActive ? 'app-shell__nav-link app-shell__nav-link--active' : 'app-shell__nav-link'
+            }
+          >
+            Бійці
+          </NavLink>
+          <NavLink
+            to="/skills"
+            className={({ isActive }) =>
+              isActive ? 'app-shell__nav-link app-shell__nav-link--active' : 'app-shell__nav-link'
+            }
+          >
+            Каталог навичок
+          </NavLink>
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              isActive ? 'app-shell__nav-link app-shell__nav-link--active' : 'app-shell__nav-link'
+            }
+          >
+            Налаштування
+          </NavLink>
         </nav>
         <div style={{ marginTop: 'auto', display: 'grid', gap: 10 }}>
           {state.canUndo && (
@@ -69,10 +98,10 @@ export default function AppShell() {
           </button>
         </div>
       </aside>
-      <section style={{ position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'var(--spotlight-1)' }} />
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'var(--spotlight-2)' }} />
-        <div style={{ position: 'relative', height: '100%', overflow: 'auto', backdropFilter: 'blur(6px)' }}>
+      <section className="app-shell__main">
+        <div className="app-shell__main-spotlight-primary" />
+        <div className="app-shell__main-spotlight-secondary" />
+        <div className="app-shell__main-scroll">
         <Routes>
           <Route path="/" element={<Home
             fighters={state.fighters}
@@ -81,6 +110,7 @@ export default function AppShell() {
             createTask={state.createTaskV2}
             updateStatus={state.updateTaskV2Status}
             updateDetails={state.updateTaskV2Details}
+            updateAssignees={state.updateTaskV2Assignees}
             approveTask={state.approveTaskV2}
             deleteTask={state.deleteTaskV2}
             fighterSkillLevels={state.fighterSkillLevels}
@@ -127,19 +157,4 @@ export default function AppShell() {
       <ToastContainer toasts={toast.toasts} onDismiss={toast.dismissToast} />
     </div>
   );
-}
-
-function navStyle(active: boolean): React.CSSProperties {
-  return {
-    padding: '12px 14px',
-    borderRadius: 12,
-    textDecoration: 'none',
-    color: 'var(--fg)',
-    fontWeight: 600,
-    letterSpacing: '0.02em',
-    background: active ? 'var(--nav-active-bg)' : 'var(--nav-inactive-bg)',
-    border: active ? `1px solid var(--nav-active-border)` : `1px solid var(--nav-inactive-border)`,
-    boxShadow: active ? 'var(--shadow-md)' : 'var(--shadow-sm)',
-    transition: 'all 0.2s ease'
-  };
 }

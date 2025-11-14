@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction, useEffect, useState } from 'react';
-import { FighterXpLedger, TaskComment, TaskV2, TaskV2Status } from '@/types';
+import { FighterXpLedger, TaskComment, TaskV2, TaskV2Assignee, TaskV2Status } from '@/types';
 import { safeGetItem, safeSetItem, generateId } from '@/lib/storage';
 import { parseTasksV2 } from '@/utils/storageAdapters';
 import { UndoManager } from '@/lib/undo';
@@ -21,6 +21,7 @@ export type UseTaskState = {
   createTask: (payload: Omit<TaskV2, 'id' | 'status' | 'createdAt' | 'submittedAt' | 'approvedAt' | 'taskNumber' | 'history' | 'comments' | 'hasUnreadComments'>) => void;
   updateTaskStatus: (taskId: string, status: TaskV2Status) => void;
   updateTaskDetails: (taskId: string, updates: { title?: string; description?: string; isPriority?: boolean; difficulty?: 1 | 2 | 3 | 4 | 5 }) => void;
+  updateTaskAssignees: (taskId: string, fighterIds: string[]) => void;
   approveTask: (taskId: string, approved: Record<string, Record<string, number>>) => void;
   deleteTask: (taskId: string) => void;
   addTaskComment: (taskId: string, message: string, author?: string) => void;
@@ -73,6 +74,33 @@ export function useTaskState({ setXpLedger, undoManager }: UseTaskStateArgs): Us
           submittedAt: status === 'validation' ? timestamp : task.submittedAt,
           approvedAt: status === 'done' ? timestamp : task.approvedAt,
           history
+        };
+      })
+    );
+  }
+
+  function updateTaskAssignees(taskId: string, fighterIds: string[]) {
+    const targetIds = new Set(fighterIds);
+    setTasks(prev =>
+      prev.map(task => {
+        if (task.id !== taskId) return task;
+        const existing: TaskV2Assignee[] = [];
+        const existingIds = new Set<string>();
+        for (const assignee of task.assignees) {
+          if (targetIds.has(assignee.fighterId)) {
+            existing.push(assignee);
+            existingIds.add(assignee.fighterId);
+          }
+        }
+        const created: TaskV2Assignee[] = [];
+        for (const fighterId of targetIds) {
+          if (!existingIds.has(fighterId)) {
+            created.push({ fighterId, skills: [] });
+          }
+        }
+        return {
+          ...task,
+          assignees: [...existing, ...created]
         };
       })
     );
@@ -200,6 +228,7 @@ export function useTaskState({ setXpLedger, undoManager }: UseTaskStateArgs): Us
     createTask,
     updateTaskStatus,
     updateTaskDetails,
+    updateTaskAssignees,
     approveTask,
     deleteTask,
     addTaskComment,

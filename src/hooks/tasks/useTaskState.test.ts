@@ -548,4 +548,46 @@ describe('useTaskState', () => {
     const undoEntry = undoManager.pop();
     expect(undoEntry).toMatchObject({ type: 'delete_task', data: { task: expect.objectContaining({ id: task.id }) } });
   });
+
+  it('updates task assignees preserving existing entries and adding new ones', () => {
+    const { hook } = setupHook();
+    const { result } = hook;
+
+    act(() => {
+      result.current.createTask({
+        title: 'With assignees',
+        description: '',
+        difficulty: 3,
+        assignees: [
+          {
+            fighterId: 'f1',
+            skills: [{ skillId: 's1', categoryId: 'c1', xpSuggested: 10 }]
+          },
+          {
+            fighterId: 'f2',
+            skills: [{ skillId: 's2', categoryId: 'c2', xpSuggested: 20 }]
+          }
+        ]
+      });
+    });
+
+    const taskId = result.current.tasks[0].id;
+
+    act(() => {
+      result.current.updateTaskAssignees(taskId, ['f2', 'f3']);
+    });
+
+    const updated = result.current.tasks[0];
+    const ids = updated.assignees.map(a => a.fighterId).sort();
+    expect(ids).toEqual(['f2', 'f3']);
+
+    const f2Assignee = updated.assignees.find(a => a.fighterId === 'f2');
+    expect(f2Assignee?.skills).toEqual([
+      { skillId: 's2', categoryId: 'c2', xpSuggested: 20 }
+    ]);
+
+    const f3Assignee = updated.assignees.find(a => a.fighterId === 'f3');
+    expect(f3Assignee).toBeDefined();
+    expect(f3Assignee?.skills).toEqual([]);
+  });
 });

@@ -83,6 +83,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -109,6 +110,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -145,6 +147,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={deleteTask}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -182,6 +185,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={updateDetails}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -232,6 +236,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={updateDetails}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -272,6 +277,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -312,6 +318,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -348,6 +355,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{}}
@@ -397,6 +405,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={updateStatus}
       updateDetails={updateDetails}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -449,6 +458,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={updateStatus}
       updateDetails={updateDetails}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -499,6 +509,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={updateStatus}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{}}
@@ -545,6 +556,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={updateDetails}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{}}
@@ -601,6 +613,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{}}
@@ -654,6 +667,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={approveTask}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -670,18 +684,11 @@ describe('Home', () => {
     await user.click(approveButton);
 
     expect(addComment).toHaveBeenCalledWith('t1', 'Ready to approve');
-
+    // XP approval UI has been removed; ensure no approve button is rendered
     const titleInput = await screen.findByPlaceholderText('Назва задачі');
     const taskModal = titleInput.closest('.modal-dialog') as HTMLElement;
-    const approveAction = within(taskModal).getByRole('button', { name: 'Затвердити XP' });
-    await user.click(approveAction);
-
-    await waitFor(() => {
-      expect(approveTask).toHaveBeenCalledWith('t1', { f1: { s1: 10 } });
-    });
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).toBeNull();
-    });
+    expect(within(taskModal).queryByRole('button', { name: 'Затвердити XP' })).toBeNull();
+    expect(approveTask).not.toHaveBeenCalled();
   });
 
   it('approves validation task without optional comment', async () => {
@@ -720,6 +727,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={approveTask}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -731,15 +739,9 @@ describe('Home', () => {
 
     const titleInput = await screen.findByPlaceholderText('Назва задачі');
     const modal = titleInput.closest('.modal-dialog') as HTMLElement;
-    const approveAction = within(modal).getByRole('button', { name: 'Затвердити XP' });
-    await user.click(approveAction);
-
-    await waitFor(() => {
-      expect(approveTask).toHaveBeenCalledWith('t1', { f1: { s1: 8 } });
-    });
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).toBeNull();
-    });
+    // XP approval UI has been removed; ensure no approve button is rendered
+    expect(within(modal).queryByRole('button', { name: 'Затвердити XP' })).toBeNull();
+    expect(approveTask).not.toHaveBeenCalled();
     expect(addComment).not.toHaveBeenCalled();
   });
 
@@ -751,6 +753,7 @@ describe('Home', () => {
       createTask: () => {},
       updateStatus: () => {},
       updateDetails: () => {},
+      updateAssignees: () => {},
       approveTask: () => {},
       deleteTask: () => {},
       fighterSkillLevels: { f1: { s1: 0 } } as any,
@@ -823,6 +826,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -861,6 +865,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -917,6 +922,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={updateStatus}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -949,6 +955,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={updateStatus}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{}}
@@ -957,11 +964,9 @@ describe('Home', () => {
     />);
 
     const card = screen.getByText('Archive me').closest('.task-card') as HTMLElement;
-    const archiveButton = within(card).getByRole('button', { name: 'Архівувати' });
-
-    await user.click(archiveButton);
-
-    expect(updateStatus).toHaveBeenCalledWith('t-archive', 'archived');
+    // Archive action button has been removed from the card UI
+    expect(within(card).queryByRole('button', { name: 'Архівувати' })).toBeNull();
+    expect(updateStatus).not.toHaveBeenCalled();
   });
 
   it('opens approval modal when dropping validation task into Done column', async () => {
@@ -1069,6 +1074,7 @@ describe('Home', () => {
       createTask={createTask}
       updateStatus={() => {}}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}

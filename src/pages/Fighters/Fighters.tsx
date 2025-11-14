@@ -199,7 +199,7 @@ export default function Fighters({ fighters, categories, fighterSkillLevels, xpL
   };
 
   return (
-    <div style={{ height: '100%', display: 'grid', gridTemplateRows: 'auto 1fr', gap: 20, padding: 24, background: 'var(--surface-panel-alt)' }}>
+    <div className="page-shell" style={{ display: 'grid', gridTemplateRows: 'auto 1fr', gap: 20 }}>
       <FightersHeader
         fighterCount={fighters.length}
         search={search}
@@ -218,11 +218,11 @@ export default function Fighters({ fighters, categories, fighterSkillLevels, xpL
             action={{ label: '+ Додати бійця', onClick: handleOpenCreateModal }}
           />
         ) : (
-          <div style={{ display: 'grid', gap: 24 }}>
+          <div className="fighters-grid">
             {filteredFighters.map(({ group, items }) => (
-              <div key={group ?? 'ungrouped'} style={{ display: 'grid', gap: 14 }}>
-                {groupByUnit && <h3 style={{ margin: 0, fontSize: 18, color: 'var(--muted)' }}>{group}</h3>}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 18 }}>
+              <div key={group ?? 'ungrouped'} className="fighters-group">
+                {groupByUnit && <h3 className="fighters-group-title">{group}</h3>}
+                <div className="fighters-card-grid">
                   {items.map((fighter: Fighter) => (
                     <FighterCard
                       key={fighter.id}

@@ -60,7 +60,6 @@ export const FighterProfileModal: React.FC<FighterProfileModalProps> = ({
       open={open}
       onClose={onClose}
       title={`Профіль: ${fighter.callsign || fighter.name || ''}`}
-      width={960}
       footer={null}
     >
       <div className="stack gap-18">
@@ -114,15 +113,17 @@ export const FighterProfileModal: React.FC<FighterProfileModalProps> = ({
             {recentTasks.length === 0 ? (
               <span className="text-xs text-muted">Немає історії задач.</span>
             ) : (
-              recentTasks.map(task => (
-                <div key={task.id} className="task-history-item">
-                  <div className="row-between text-xs">
-                    <span className="text-strong">#{task.taskNumber ?? '—'} · {task.title}</span>
-                    <span className="text-muted">{taskStatusLabels[task.status]}</span>
+              <div className="fighter-history-list">
+                {recentTasks.map(task => (
+                  <div key={task.id} className="task-history-item">
+                    <div className="fighter-history-title-row text-xs">
+                      <span className="fighter-history-title text-strong">#{task.taskNumber ?? '—'} · {task.title}</span>
+                      <span className="text-muted">{taskStatusLabels[task.status]}</span>
+                    </div>
+                    <span className="text-xs text-muted">{formatDateTime(task.approvedAt ?? task.submittedAt ?? task.createdAt)}</span>
                   </div>
-                  <span className="text-xs text-muted">{formatDateTime(task.approvedAt ?? task.submittedAt ?? task.createdAt)}</span>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </div>

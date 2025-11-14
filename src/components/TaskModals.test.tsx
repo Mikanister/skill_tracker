@@ -102,6 +102,7 @@ const renderTaskViewModal = (overrides: {
   onSaveDetails?: (taskId: string, payload: any) => void;
   onAddComment?: (taskId: string, message: string) => void;
   onStatusChange?: (task: TaskV2, status: TaskV2Status) => void;
+  onUpdateAssignees?: (taskId: string, fighterIds: string[]) => void;
 } = {}) => {
   const {
     task = sampleTask,
@@ -109,7 +110,8 @@ const renderTaskViewModal = (overrides: {
     onDelete = vi.fn(),
     onSaveDetails = vi.fn(),
     onAddComment = vi.fn(),
-    onStatusChange = vi.fn()
+    onStatusChange = vi.fn(),
+    onUpdateAssignees = vi.fn()
   } = overrides;
 
   const Wrapper: React.FC = () => {
@@ -138,6 +140,7 @@ const renderTaskViewModal = (overrides: {
         onClose={onClose}
         onDelete={onDelete}
         onSaveDetails={onSaveDetails}
+        onUpdateAssignees={onUpdateAssignees}
         onAddComment={onAddComment}
         onStatusChange={onStatusChange}
         statusLabels={statusLabels}
@@ -436,6 +439,7 @@ describe('TaskViewModal', () => {
       onClose={vi.fn()}
       onDelete={vi.fn()}
       onSaveDetails={vi.fn()}
+      onUpdateAssignees={vi.fn()}
       onAddComment={vi.fn()}
       onStatusChange={vi.fn()}
       onApproveTask={vi.fn()}
@@ -485,8 +489,8 @@ describe('TaskViewModal', () => {
     expect(onSaveDetails).toHaveBeenCalledWith('task-1', expect.objectContaining({
       description: 'Updated description',
       isPriority: true,
-      difficulty: 3,
-      changeNotes: expect.arrayContaining(['опис задачі'])
+      difficulty: 4,
+      changeNotes: expect.arrayContaining(['опис задачі', 'складність задачі'])
     }));
   });
 

@@ -23,6 +23,10 @@ describe('TaskViewModal Sections', () => {
       const [description, setDescription] = React.useState('Initial description');
       const [priority, setPriority] = React.useState(false);
       const [difficulty, setDifficulty] = React.useState<1 | 2 | 3 | 4 | 5>(3);
+      const [assignees, setAssignees] = React.useState<string[]>([]);
+      const fighters = [
+        { id: 'f1', name: 'Name1', fullName: 'Full 1', callsign: 'Alpha' }
+      ] as any;
 
       return (
         <TaskDetailsSection
@@ -32,6 +36,9 @@ describe('TaskViewModal Sections', () => {
           onPriorityChange={setPriority}
           difficultyDraft={difficulty}
           onDifficultyChange={setDifficulty}
+          fighters={fighters}
+          assigneeIds={assignees}
+          onAssigneeIdsChange={setAssignees}
         />
       );
     };
@@ -39,7 +46,7 @@ describe('TaskViewModal Sections', () => {
     render(<Wrapper />);
 
     const section = screen.getByText('Основна інформація').closest('section') as HTMLElement;
-    const difficultySelect = within(section).getByRole('combobox');
+    const difficultySelect = within(section).getByLabelText('Складність задачі');
     await user.selectOptions(difficultySelect, '5');
     expect(difficultySelect).toHaveValue('5');
 
@@ -51,6 +58,53 @@ describe('TaskViewModal Sections', () => {
     const priorityCheckbox = within(section).getByLabelText('Позначити як пріоритетну');
     await user.click(priorityCheckbox);
     expect(priorityCheckbox).toBeChecked();
+  });
+
+  it('manages assignees via dropdown and tags', async () => {
+    const user = userEvent.setup();
+
+    const fighters = [
+      { id: 'f1', name: 'Name1', fullName: 'Full 1', callsign: 'Alpha' },
+      { id: 'f2', name: 'Name2', fullName: 'Full 2', callsign: 'Bravo' }
+    ] as any;
+
+    const Wrapper: React.FC = () => {
+      const [assignees, setAssignees] = React.useState<string[]>([]);
+      return (
+        <TaskDetailsSection
+          descriptionDraft=""
+          onDescriptionChange={() => undefined}
+          priorityDraft={false}
+          onPriorityChange={() => undefined}
+          difficultyDraft={3}
+          onDifficultyChange={() => undefined}
+          fighters={fighters}
+          assigneeIds={assignees}
+          onAssigneeIdsChange={setAssignees}
+        />
+      );
+    };
+
+    render(<Wrapper />);
+
+    const section = screen.getByText('Основна інформація').closest('section') as HTMLElement;
+    const assigneeSelect = within(section).getByLabelText('Виконавці');
+
+    // select first fighter
+    await user.selectOptions(assigneeSelect, 'f1');
+    expect(within(section).getByText('Alpha')).toBeInTheDocument();
+
+    // f1 should disappear from dropdown options, f2 should remain
+    expect(within(section).queryByRole('option', { name: 'Alpha' })).not.toBeInTheDocument();
+    expect(within(section).getByRole('option', { name: 'Bravo' })).toBeInTheDocument();
+
+    // remove via tag click
+    const tagButton = within(section).getByRole('button', { name: /Alpha/ });
+    await user.click(tagButton);
+
+    // tag removed and option back in dropdown
+    expect(within(section).queryByRole('button', { name: /Alpha/ })).not.toBeInTheDocument();
+    expect(within(section).getByRole('option', { name: 'Alpha' })).toBeInTheDocument();
   });
 
   it('renders activity history entries and empty placeholder', () => {

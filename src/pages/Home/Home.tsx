@@ -39,6 +39,7 @@ type Props = {
   createTask: (payload: { title: string; description?: string; difficulty: 1 | 2 | 3 | 4 | 5; assignees: TaskV2Assignee[]; isPriority?: boolean }) => void;
   updateStatus: (taskId: string, status: TaskV2Status) => void;
   updateDetails: (taskId: string, updates: { title?: string; description?: string; isPriority?: boolean; difficulty?: 1 | 2 | 3 | 4 | 5 }) => void;
+  updateAssignees: (taskId: string, fighterIds: string[]) => void;
   approveTask: (taskId: string, approved: Record<string, Record<string, number>>) => void;
   deleteTask: (taskId: string) => void;
   fighterSkillLevels: Record<string, FighterSkillLevels>;
@@ -46,7 +47,7 @@ type Props = {
   markTaskCommentsRead: (taskId: string) => void;
 };
 
-export default function Home({ fighters, categories, tasks, createTask, updateStatus, updateDetails, approveTask, deleteTask, fighterSkillLevels, addComment, markTaskCommentsRead }: Props) {
+export default function Home({ fighters, categories, tasks, createTask, updateStatus, updateDetails, updateAssignees, approveTask, deleteTask, fighterSkillLevels, addComment, markTaskCommentsRead }: Props) {
   const {
     searchQuery,
     setSearchQuery,
@@ -216,7 +217,7 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
   );
 
   return (
-    <div style={{ padding: 24, height: '100%', display: 'flex', flexDirection: 'column', gap: 18, background: 'var(--surface-panel-alt)', boxSizing: 'border-box' }}>
+    <div className="page-shell">
       <SearchBar
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -254,17 +255,7 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
       />
 
       {hasArchivedTasks && (
-        <section
-          style={{
-            borderRadius: 18,
-            border: '1px solid var(--border-subtle)',
-            background: 'var(--surface-glass-2)',
-            padding: 18,
-            boxShadow: 'var(--shadow-md)',
-            display: 'grid',
-            gap: 14
-          }}
-        >
+        <section className="home-archive-section">
           <button
             onClick={() => setArchiveExpanded(prev => !prev)}
             style={{
@@ -286,13 +277,7 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
           </button>
 
           {isArchiveExpanded && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                gap: 12
-              }}
-            >
+            <div className="home-archive-grid">
               {archivedTasks.map(task => (
                 <React.Fragment key={task.id}>{renderTask(task)}</React.Fragment>
               ))}
@@ -319,6 +304,7 @@ export default function Home({ fighters, categories, tasks, createTask, updateSt
         onClose={handleCloseModal}
         onDelete={handleDeleteTask}
         onSaveDetails={handleSaveDetails}
+        onUpdateAssignees={(taskId, fighterIds) => updateAssignees(taskId, fighterIds)}
         onAddComment={handleAddComment}
         onApproveTask={handleApproveTask}
         onStatusChange={handleStatusChange}

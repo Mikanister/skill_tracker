@@ -56,17 +56,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               ⚙️ {task.difficulty}
             </span>
           )}
-          {task.status !== 'archived' && onArchive && (
-            <button
-              onClick={event => {
-                event.stopPropagation();
-                onArchive(task);
-              }}
-              className="btn-panel"
-            >
-              Архівувати
-            </button>
-          )}
           {task.status === 'archived' && (
             <button
               onClick={event => {

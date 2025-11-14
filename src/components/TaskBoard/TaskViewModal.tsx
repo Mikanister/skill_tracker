@@ -28,6 +28,7 @@ export type TaskViewModalProps = {
   onClose: () => void;
   onDelete: (taskId: string) => void;
   onSaveDetails: (taskId: string, payload: { title: string; description?: string; isPriority: boolean; difficulty: 1 | 2 | 3 | 4 | 5; changeNotes: string[] }) => void;
+  onUpdateAssignees: (taskId: string, fighterIds: string[]) => void;
   onAddComment: (taskId: string, message: string) => void;
   onStatusChange: (task: TaskV2, status: TaskV2Status) => void;
   onApproveTask?: (taskId: string, approvalMap: Record<string, Record<string, number>>, comment?: string) => void;
@@ -53,6 +54,7 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
   onClose,
   onDelete,
   onSaveDetails,
+  onUpdateAssignees,
   onAddComment,
   onStatusChange,
   onApproveTask,
@@ -63,6 +65,7 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   const statusMenuRef = useRef<HTMLDivElement>(null);
   const [difficultyDraft, setDifficultyDraft] = useState<1 | 2 | 3 | 4 | 5>(3);
+  const [assigneesDraftIds, setAssigneesDraftIds] = useState<string[]>([]);
 
   const statusOptions = useMemo(() => (
     Object.keys(statusLabels).map(key => key as TaskV2Status)
@@ -84,6 +87,7 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
       }
     }
     setApproved(init);
+    setAssigneesDraftIds(task.assignees.map(assignee => assignee.fighterId));
   }, [task, setTitleDraft, setDescriptionDraft, setPriorityDraft, setApproved]);
 
   useEffect(() => {
@@ -107,14 +111,20 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
 
   const detailsDirty = useMemo(() => {
     if (!task) return false;
+    const currentAssigneeIds = task.assignees.map(assignee => assignee.fighterId).sort();
+    const draftAssigneeIds = [...assigneesDraftIds].sort();
+    const assigneesChanged =
+      currentAssigneeIds.length !== draftAssigneeIds.length ||
+      currentAssigneeIds.some((id, index) => id !== draftAssigneeIds[index]);
     return (
       trimmedTitle !== task.title.trim() ||
       trimmedDescription !== (task.description ?? '').trim() ||
       priorityDraft !== !!task.isPriority ||
       difficultyDraft !== (task.difficulty ?? 3) ||
-      statusDraft !== task.status
+      statusDraft !== task.status ||
+      assigneesChanged
     );
-  }, [task, trimmedTitle, trimmedDescription, priorityDraft, difficultyDraft, statusDraft]);
+  }, [task, trimmedTitle, trimmedDescription, priorityDraft, difficultyDraft, statusDraft, assigneesDraftIds]);
 
   const activityEntries = useMemo(() => buildTaskActivityEntries(task), [task]);
 
@@ -146,7 +156,15 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
     if (statusDraft !== task.status) {
       onStatusChange(task, statusDraft);
     }
-  }, [task, titleError, trimmedTitle, trimmedDescription, statusDraft, priorityDraft, onSaveDetails, onStatusChange]);
+    const currentAssigneeIds = task.assignees.map(assignee => assignee.fighterId).sort();
+    const draftAssigneeIds = [...assigneesDraftIds].sort();
+    const assigneesChanged =
+      currentAssigneeIds.length !== draftAssigneeIds.length ||
+      currentAssigneeIds.some((id, index) => id !== draftAssigneeIds[index]);
+    if (assigneesChanged) {
+      onUpdateAssignees(task.id, assigneesDraftIds);
+    }
+  }, [task, titleError, trimmedTitle, trimmedDescription, statusDraft, priorityDraft, difficultyDraft, assigneesDraftIds, onSaveDetails, onStatusChange, onUpdateAssignees]);
 
   const handleDelete = useCallback(() => {
     if (!task) return;
@@ -188,7 +206,6 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
           titleError={titleError}
         />
       ) : ''}
-      width={840}
       footer={task ? (
         <TaskViewModalFooter
           detailsDirty={detailsDirty}
@@ -207,6 +224,9 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
           onPriorityChange={setPriorityDraft}
           difficultyDraft={difficultyDraft}
           onDifficultyChange={setDifficultyDraft}
+          fighters={fighters}
+          assigneeIds={assigneesDraftIds}
+          onAssigneeIdsChange={setAssigneesDraftIds}
         />
 
         {/* XP секція тимчасово прихована за вимогою */}
@@ -222,18 +242,6 @@ export const TaskViewModal: React.FC<TaskViewModalProps> = ({
           onCommentChange={setCommentDraft}
           onSubmit={handleCommentSubmit}
         />
-
-        {onApproveTask && (
-          <div className="task-approve-actions">
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={handleApprove}
-            >
-              Затвердити XP
-            </button>
-          </div>
-        )}
       </div>
     </Modal>
   );

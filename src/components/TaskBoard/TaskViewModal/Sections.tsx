@@ -1,5 +1,5 @@
 import React from 'react';
-import { TaskV2, TaskV2Status } from '@/types';
+import { Fighter, TaskV2, TaskV2Status } from '@/types';
 import { TaskActivityEntry } from '@/components/TaskBoard/taskActivity';
 
 const DIFFICULTY_OPTIONS: (1 | 2 | 3 | 4 | 5)[] = [1, 2, 3, 4, 5];
@@ -11,6 +11,9 @@ export type TaskDetailsSectionProps = {
   onPriorityChange: (value: boolean) => void;
   difficultyDraft: 1 | 2 | 3 | 4 | 5;
   onDifficultyChange: (value: 1 | 2 | 3 | 4 | 5) => void;
+  fighters?: Fighter[];
+  assigneeIds?: string[];
+  onAssigneeIdsChange?: (value: string[]) => void;
 };
 
 export const TaskDetailsSection: React.FC<TaskDetailsSectionProps> = ({
@@ -19,7 +22,10 @@ export const TaskDetailsSection: React.FC<TaskDetailsSectionProps> = ({
   priorityDraft,
   onPriorityChange,
   difficultyDraft,
-  onDifficultyChange
+  onDifficultyChange,
+  fighters = [],
+  assigneeIds = [],
+  onAssigneeIdsChange
 }) => (
   <section className="section-stack">
     <strong className="section-title">Основна інформація</strong>
@@ -34,6 +40,57 @@ export const TaskDetailsSection: React.FC<TaskDetailsSectionProps> = ({
           <option key={option} value={option}>{option}</option>
         ))}
       </select>
+    </label>
+    <label className="labeled-field">
+      <span className="field-label">Виконавці</span>
+      <div className="section-stack">
+        <select
+          value=""
+          onChange={event => {
+            const value = event.target.value;
+            if (!value) return;
+            if (!onAssigneeIdsChange) return;
+            if (!assigneeIds.includes(value)) {
+              onAssigneeIdsChange([...assigneeIds, value]);
+            }
+          }}
+          className="input-control"
+        >
+          <option value="" disabled>
+            Обрати бійця
+          </option>
+          {fighters
+            .filter(fighter => !assigneeIds.includes(fighter.id))
+            .map(fighter => (
+              <option key={fighter.id} value={fighter.id}>
+                {fighter.callsign || fighter.fullName || fighter.name}
+              </option>
+            ))}
+        </select>
+        {assigneeIds.length > 0 && (
+          <div className="fighter-card-skill-list">
+            {assigneeIds.map(id => {
+              const fighter = fighters.find(f => f.id === id);
+              if (!fighter) return null;
+              const label = fighter.callsign || fighter.fullName || fighter.name;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className="fighter-skill-chip"
+                  onClick={() => {
+                    if (!onAssigneeIdsChange) return;
+                    onAssigneeIdsChange(assigneeIds.filter(existingId => existingId !== id));
+                  }}
+                >
+                  <span>{label}</span>
+                  <span style={{ marginLeft: 6 }}>✕</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </label>
     <label className="labeled-field">
       <span className="field-label">Опис задачі</span>
