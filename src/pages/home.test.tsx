@@ -892,6 +892,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={() => {}}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{}}
@@ -993,6 +994,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={updateStatus}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -1039,6 +1041,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={updateStatus}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
@@ -1121,6 +1124,7 @@ describe('Home', () => {
       createTask={() => {}}
       updateStatus={updateStatus}
       updateDetails={() => {}}
+      updateAssignees={() => {}}
       approveTask={() => {}}
       deleteTask={() => {}}
       fighterSkillLevels={{ f1: { s1: 0 } } as any}
